@@ -1,0 +1,38 @@
+# name: test/sql/sudan_providers.test
+# description: test SUDAN_Providers() function
+# group: [sql]
+
+require sudan
+
+# Test provider listing returns all 5 providers
+query II
+SELECT
+    provider_id,
+    name
+FROM
+    SUDAN_Providers()
+ORDER BY
+    provider_id
+;
+----
+fao	Food and Agriculture Organization
+ilo	International Labour Organization
+unhcr	UNHCR
+who	World Health Organization
+worldbank	World Bank
+
+# Test that all columns are present
+query IIIII
+SELECT
+    provider_id,
+    name,
+    name_ar,
+    description,
+    base_url
+FROM
+    SUDAN_Providers()
+WHERE
+    provider_id = 'worldbank'
+;
+----
+worldbank	World Bank	البنك الدولي	World Development Indicators and other World Bank datasets	https://api.worldbank.org/v2/

@@ -1,0 +1,18 @@
+# name: test/sql/sudan_fao.test
+# description: test FAO functions
+# group: [sql]
+
+require sudan
+
+# Test SUDAN_FAO basic query (crop production)
+query I
+SELECT count(*) >= 0 FROM SUDAN_FAO('QCL', 'production');
+----
+true
+
+# Test output columns exist
+query IIIIIII
+SELECT dataset, area, item, element, year, value, unit
+FROM SUDAN_FAO('QCL', 'production')
+LIMIT 0;
+----

@@ -1,0 +1,24 @@
+# name: test/sql/sudan_unhcr.test
+# description: test UNHCR functions
+# group: [sql]
+
+require sudan
+
+# Test SUDAN_UNHCR basic query
+query I
+SELECT count(*) >= 0 FROM SUDAN_UNHCR('refugees');
+----
+true
+
+# Test invalid population type still returns (graceful)
+query I
+SELECT count(*) >= 0 FROM SUDAN_UNHCR('idps');
+----
+true
+
+# Test output columns exist
+query IIIIIII
+SELECT year, population_type, country_origin, country_origin_name, country_asylum, country_asylum_name, value
+FROM SUDAN_UNHCR('refugees')
+LIMIT 0;
+----

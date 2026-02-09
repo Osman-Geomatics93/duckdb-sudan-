@@ -1,0 +1,23 @@
+# name: test/sql/sudan_who.test
+# description: test WHO functions
+# group: [sql]
+
+require sudan
+
+# Test SUDAN_WHO_Indicators returns results
+query I
+SELECT count(*) > 0 FROM SUDAN_WHO_Indicators();
+----
+true
+
+# Test SUDAN_WHO_Indicators with search filter
+query I
+SELECT count(*) > 0 FROM SUDAN_WHO_Indicators(search := 'mortality');
+----
+true
+
+# Test SUDAN_WHO basic query (life expectancy at birth)
+query I
+SELECT count(*) >= 0 FROM SUDAN_WHO('WHOSIS_000001');
+----
+true

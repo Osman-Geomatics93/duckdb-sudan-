@@ -1,0 +1,18 @@
+# name: test/sql/sudan.test
+# description: test sudan extension loading
+# group: [sql]
+
+# Before we load the extension, this will fail
+statement error
+SELECT * FROM SUDAN_Providers();
+----
+Catalog Error: Table Function with name sudan_providers does not exist!
+
+# Require statement will ensure this test is run with this extension loaded
+require sudan
+
+# Confirm the extension works
+query I
+SELECT count(*) FROM SUDAN_Providers()
+----
+5

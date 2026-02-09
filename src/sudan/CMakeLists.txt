@@ -1,0 +1,15 @@
+set(EXTENSION_SOURCES
+    ${EXTENSION_SOURCES}
+    ${CMAKE_CURRENT_SOURCE_DIR}/providers.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/http_client.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/filter_pushdown.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/cache.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/worldbank/wb_functions.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/worldbank/wb_indicators.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/who/who_functions.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fao/fao_functions.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/unhcr/unhcr_functions.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/ilo/ilo_functions.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/geo/geo_functions.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/info/info_functions.cpp
+    PARENT_SCOPE)

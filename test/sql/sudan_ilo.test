@@ -1,0 +1,18 @@
+# name: test/sql/sudan_ilo.test
+# description: test ILO functions
+# group: [sql]
+
+require sudan
+
+# Test SUDAN_ILO basic query
+query I
+SELECT count(*) >= 0 FROM SUDAN_ILO('UNE_DEAP_SEX_AGE_RT');
+----
+true
+
+# Test output columns exist
+query IIIIII
+SELECT indicator, country, sex, classif1, year, value
+FROM SUDAN_ILO('UNE_DEAP_SEX_AGE_RT')
+LIMIT 0;
+----

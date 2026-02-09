@@ -1,0 +1,38 @@
+# name: test/sql/sudan_worldbank.test
+# description: test World Bank functions
+# group: [sql]
+
+require sudan
+
+# Test SUDAN_WB_Indicators returns results
+query I
+SELECT count(*) > 0 FROM SUDAN_WB_Indicators();
+----
+true
+
+# Test SUDAN_WB_Indicators with search filter
+query I
+SELECT count(*) > 0 FROM SUDAN_WB_Indicators(search := 'population');
+----
+true
+
+# Test SUDAN_WorldBank basic query
+query I
+SELECT count(*) > 0 FROM SUDAN_WorldBank('SP.POP.TOTL');
+----
+true
+
+# Test SUDAN_WorldBank returns expected columns
+query IIIIII
+SELECT indicator_id, indicator_name, country, country_name, year, value
+FROM SUDAN_WorldBank('SP.POP.TOTL')
+WHERE year = 2020
+LIMIT 1;
+----
+SP.POP.TOTL	Population, total	SD	Sudan	2020	(notempty)
+
+# Test multi-country query
+query I
+SELECT count(DISTINCT country) FROM SUDAN_WorldBank('SP.POP.TOTL', countries := ['SDN', 'EGY']);
+----
+2

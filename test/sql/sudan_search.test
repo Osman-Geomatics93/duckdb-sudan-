@@ -1,0 +1,24 @@
+# name: test/sql/sudan_search.test
+# description: test cross-provider search
+# group: [sql]
+
+require sudan
+
+# Test SUDAN_Search returns results
+query I
+SELECT count(*) > 0 FROM SUDAN_Search(query := 'population');
+----
+true
+
+# Test SUDAN_Search requires query parameter
+statement error
+SELECT * FROM SUDAN_Search();
+----
+Invalid Input Error: SUDAN: The 'query' parameter is required for SUDAN_Search().
+
+# Test output columns exist
+query III
+SELECT provider, indicator_id, indicator_name
+FROM SUDAN_Search(query := 'gdp')
+LIMIT 0;
+----

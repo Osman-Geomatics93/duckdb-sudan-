@@ -1,0 +1,61 @@
+# name: test/sql/sudan_boundaries.test
+# description: test geospatial functions
+# group: [sql]
+
+require sudan
+
+# Test SUDAN_States returns 18 states
+query I
+SELECT count(*) FROM SUDAN_States();
+----
+18
+
+# Test state data includes Khartoum
+query III
+SELECT state_name, state_name_ar, iso_code
+FROM SUDAN_States()
+WHERE state_name = 'Khartoum';
+----
+Khartoum	الخرطوم	SD-KH
+
+# Test SUDAN_Boundaries country level
+query I
+SELECT count(*) FROM SUDAN_Boundaries('country');
+----
+1
+
+# Test SUDAN_Boundaries state level returns 18 states
+query I
+SELECT count(*) FROM SUDAN_Boundaries('state');
+----
+18
+
+# Test SUDAN_GeoCode with English name
+query I
+SELECT SUDAN_GeoCode('Khartoum');
+----
+SD-KH
+
+# Test SUDAN_GeoCode with Arabic name
+query I
+SELECT SUDAN_GeoCode('الخرطوم');
+----
+SD-KH
+
+# Test SUDAN_GeoCode case-insensitive
+query I
+SELECT SUDAN_GeoCode('khartoum');
+----
+SD-KH
+
+# Test SUDAN_GeoCode with unknown name returns empty string
+query I
+SELECT SUDAN_GeoCode('Unknown');
+----
+(empty)
+
+# Test invalid boundary level
+statement error
+SELECT * FROM SUDAN_Boundaries('invalid');
+----
+Invalid Input Error: SUDAN: Invalid boundary level 'invalid'. Valid levels: 'country', 'state', 'locality'.
