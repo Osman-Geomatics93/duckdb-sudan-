@@ -688,8 +688,8 @@ build\release\duckdb.exe -unsigned</code>
             <span class="ar-text" style="font-family:var(--font-arabic)">خريطة تفاعلية — 18 ولاية سودانية</span>
         </h2>
         <p>
-            <span class="en-text">Embedded GeoJSON boundaries with bilingual names. Click a state for details.</span>
-            <span class="ar-text" style="font-family:var(--font-arabic)">حدود GeoJSON مدمجة بأسماء ثنائية اللغة. انقر على ولاية للتفاصيل.</span>
+            <span class="en-text">Real polygon boundaries from <a href="https://gadm.org/" target="_blank" style="color:var(--link)">GADM v4.1</a> embedded as MultiPolygon GeoJSON. Click a state for details.</span>
+            <span class="ar-text" style="font-family:var(--font-arabic)">حدود مضلعات حقيقية من <a href="https://gadm.org/" target="_blank" style="color:var(--link)">GADM v4.1</a> مدمجة كـ MultiPolygon GeoJSON. انقر على ولاية للتفاصيل.</span>
         </p>
     </div>
     <div class="map-container">
@@ -766,8 +766,8 @@ build\release\duckdb.exe -unsigned</code>
     <table class="fn-table">
         <thead><tr><th>Function</th><th>Type</th><th>Description</th></tr></thead>
         <tbody>
-            <tr><td><code>SUDAN_Boundaries(level)</code></td><td><span class="fn-tag table">table</span></td><td>Admin boundaries as GeoJSON ('country', 'state', 'locality')</td></tr>
-            <tr><td><code>SUDAN_States()</code></td><td><span class="fn-tag table">table</span></td><td>18 states with bilingual names, ISO codes, centroids</td></tr>
+            <tr><td><code>SUDAN_Boundaries(level)</code></td><td><span class="fn-tag table">table</span></td><td>Admin boundaries as MultiPolygon GeoJSON from GADM v4.1 ('country', 'state', 'locality')</td></tr>
+            <tr><td><code>SUDAN_States()</code></td><td><span class="fn-tag table">table</span></td><td>18 states with bilingual names, ISO codes, centroids, and polygon boundaries</td></tr>
             <tr><td><code>SUDAN_GeoCode(name)</code></td><td><span class="fn-tag scalar">scalar</span></td><td>State name (Arabic or English) &rarr; ISO code</td></tr>
         </tbody>
     </table>
@@ -809,6 +809,18 @@ build\release\duckdb.exe -unsigned</code>
     </div>
     <div class="timeline">
         <div class="timeline-item">
+            <h4>v0.1.1 — Real Polygon Boundaries</h4>
+            <div class="date">February 2026</div>
+            <ul>
+                <li>Replaced Point centroids with real MultiPolygon boundaries from <a href="https://gadm.org/" style="color:var(--link)">GADM v4.1</a></li>
+                <li><code>SUDAN_Boundaries('state')</code> now returns actual state polygons (780&ndash;53,852 chars each)</li>
+                <li><code>SUDAN_Boundaries('country')</code> returns full country outline (103K chars)</li>
+                <li><code>SUDAN_States()</code> geojson column now contains polygon boundaries</li>
+                <li>Coordinates simplified to 3 decimal places (~111m accuracy)</li>
+                <li>9 test cases with 52 assertions</li>
+            </ul>
+        </div>
+        <div class="timeline-item">
             <h4>v0.1.0 — Initial Release</h4>
             <div class="date">February 2026</div>
             <ul>
@@ -818,7 +830,6 @@ build\release\duckdb.exe -unsigned</code>
                 <li>Bilingual support (Arabic/English)</li>
                 <li>Regional comparison with 8 neighboring countries</li>
                 <li>In-memory response caching</li>
-                <li>9 test cases with 47 assertions</li>
             </ul>
         </div>
         <div class="timeline-item">
@@ -871,7 +882,7 @@ GEN=ninja make release
         <a href="functions.md">Function Reference</a>
         <a href="https://github.com/Osman-Geomatics93/duckdb-sudan-/issues">Issues</a>
     </div>
-    <p>Built on <a href="https://duckdb.org">DuckDB</a> &middot; Data from <a href="https://data.worldbank.org/">World Bank</a>, <a href="https://www.who.int/data/gho">WHO</a>, <a href="https://www.fao.org/faostat/">FAO</a>, <a href="https://www.unhcr.org/refugee-statistics/">UNHCR</a>, <a href="https://ilostat.ilo.org/">ILO</a></p>
+    <p>Built on <a href="https://duckdb.org">DuckDB</a> &middot; Data from <a href="https://data.worldbank.org/">World Bank</a>, <a href="https://www.who.int/data/gho">WHO</a>, <a href="https://www.fao.org/faostat/">FAO</a>, <a href="https://www.unhcr.org/refugee-statistics/">UNHCR</a>, <a href="https://ilostat.ilo.org/">ILO</a>, <a href="https://gadm.org/">GADM</a></p>
     <p style="margin-top:0.5rem">&copy; 2025 <a href="https://github.com/Osman-Geomatics93">Osman-Geomatics93</a> &middot; MIT License</p>
 </footer>
 
@@ -932,8 +943,8 @@ const allFunctions = [
     { name: 'SUDAN_FAO(dataset, element)', desc: 'FAO agricultural statistics', tag: 'data' },
     { name: 'SUDAN_UNHCR(population_type)', desc: 'UNHCR displacement data', tag: 'data' },
     { name: 'SUDAN_ILO(indicator)', desc: 'ILO labor statistics', tag: 'data' },
-    { name: 'SUDAN_Boundaries(level)', desc: 'Admin boundaries as GeoJSON', tag: 'geo' },
-    { name: 'SUDAN_States()', desc: '18 states with bilingual names', tag: 'geo' },
+    { name: 'SUDAN_Boundaries(level)', desc: 'Admin boundaries as MultiPolygon GeoJSON (GADM v4.1)', tag: 'geo' },
+    { name: 'SUDAN_States()', desc: '18 states with bilingual names and polygon boundaries', tag: 'geo' },
     { name: 'SUDAN_GeoCode(name)', desc: 'State name to ISO code', tag: 'geo' },
 ];
 
