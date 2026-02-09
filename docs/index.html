@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DuckDB Sudan Extension</title>
+    <style>
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-card: #1e2a45;
+            --bg-code: #0d1525;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0b0;
+            --text-muted: #6c7086;
+            --accent: #ffcc00;
+            --accent-hover: #ffd633;
+            --link: #5eadff;
+            --link-hover: #7dc0ff;
+            --green: #50c878;
+            --orange: #ff8c42;
+            --purple: #b39ddb;
+            --red: #ef5350;
+            --border: #2a3555;
+            --code-keyword: #c792ea;
+            --code-string: #c3e88d;
+            --code-function: #82aaff;
+            --code-comment: #546e7a;
+            --code-number: #f78c6c;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.7;
+        }
+
+        /* Header */
+        header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 0.8rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--accent);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 16px;
+            color: #1a1a2e;
+        }
+
+        .logo-text {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .logo-text span {
+            color: var(--accent);
+        }
+
+        nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            margin-left: 2rem;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        nav a:hover { color: var(--accent); }
+
+        /* Layout */
+        .layout {
+            display: flex;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 240px;
+            min-width: 240px;
+            padding: 2rem 1.5rem;
+            border-right: 1px solid var(--border);
+            position: sticky;
+            top: 52px;
+            height: calc(100vh - 52px);
+            overflow-y: auto;
+        }
+
+        .sidebar a {
+            display: block;
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 0.35rem 0;
+            font-size: 0.88rem;
+            transition: color 0.2s;
+        }
+
+        .sidebar a:hover, .sidebar a.active {
+            color: var(--accent);
+        }
+
+        .sidebar h4 {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .sidebar h4:first-child { margin-top: 0; }
+
+        /* Main Content */
+        main {
+            flex: 1;
+            padding: 2.5rem 3rem;
+            max-width: 900px;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: #fff;
+        }
+
+        h1 .version {
+            font-size: 0.9rem;
+            color: var(--accent);
+            background: rgba(255, 204, 0, 0.12);
+            padding: 0.15rem 0.6rem;
+            border-radius: 12px;
+            margin-left: 0.8rem;
+            vertical-align: middle;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            color: #fff;
+            padding-bottom: 0.4rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h3 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-top: 2rem;
+            margin-bottom: 0.6rem;
+            color: var(--text-primary);
+        }
+
+        p { margin-bottom: 1rem; }
+
+        a { color: var(--link); text-decoration: none; }
+        a:hover { color: var(--link-hover); text-decoration: underline; }
+
+        /* Badges */
+        .badges {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            font-size: 0.78rem;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .badge-label {
+            padding: 0.25rem 0.5rem;
+            background: var(--bg-card);
+            color: var(--text-secondary);
+        }
+
+        .badge-value {
+            padding: 0.25rem 0.5rem;
+            font-weight: 600;
+        }
+
+        .badge-green .badge-value { background: #1b4332; color: var(--green); }
+        .badge-yellow .badge-value { background: #3d2e00; color: var(--accent); }
+        .badge-blue .badge-value { background: #1a2744; color: var(--link); }
+        .badge-purple .badge-value { background: #2d1f4e; color: var(--purple); }
+
+        /* Code blocks */
+        .code-block {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.2rem 1.5rem;
+            margin: 1rem 0 1.5rem;
+            overflow-x: auto;
+            position: relative;
+            font-size: 0.88rem;
+        }
+
+        .code-block code {
+            font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+            line-height: 1.6;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 0.6rem;
+            right: 0.6rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 0.3rem 0.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+        }
+
+        .copy-btn:hover { background: var(--border); color: var(--text-primary); }
+
+        .kw { color: var(--code-keyword); }
+        .fn { color: var(--code-function); }
+        .str { color: var(--code-string); }
+        .cm { color: var(--code-comment); }
+        .num { color: var(--code-number); }
+        .op { color: var(--text-secondary); }
+
+        /* Inline code */
+        code {
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            background: var(--bg-code);
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.85em;
+            border: 1px solid var(--border);
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: var(--bg-card);
+            padding: 0.7rem 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-primary);
+            border-bottom: 2px solid var(--border);
+        }
+
+        td {
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        tr:hover td { background: rgba(255, 255, 255, 0.02); }
+
+        td code {
+            color: var(--code-function);
+            background: rgba(130, 170, 255, 0.08);
+            border-color: rgba(130, 170, 255, 0.15);
+        }
+
+        /* Provider cards */
+        .providers {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .provider-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1.2rem 1.5rem;
+            transition: border-color 0.2s;
+        }
+
+        .provider-card:hover { border-color: var(--accent); }
+
+        .provider-card h4 {
+            color: #fff;
+            font-size: 1rem;
+            margin-bottom: 0.2rem;
+        }
+
+        .provider-card .arabic {
+            color: var(--accent);
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+            direction: rtl;
+        }
+
+        .provider-card p {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .provider-card code {
+            font-size: 0.8rem;
+        }
+
+        /* Country flags grid */
+        .countries-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 0.5rem;
+            margin: 1rem 0 1.5rem;
+        }
+
+        .country-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.8rem;
+            background: var(--bg-card);
+            border-radius: 6px;
+            font-size: 0.88rem;
+        }
+
+        .country-item .iso {
+            color: var(--accent);
+            font-weight: 700;
+            font-family: monospace;
+            min-width: 2.5rem;
+        }
+
+        .country-item .name { color: var(--text-primary); }
+        .country-item .ar { color: var(--text-muted); margin-left: auto; direction: rtl; }
+
+        /* Info box */
+        .info-box {
+            background: rgba(94, 173, 255, 0.06);
+            border-left: 3px solid var(--link);
+            padding: 1rem 1.2rem;
+            border-radius: 0 8px 8px 0;
+            margin: 1rem 0 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .info-box strong { color: var(--link); }
+
+        /* Demo image */
+        .demo-img {
+            width: 100%;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            margin: 1rem 0 1.5rem;
+        }
+
+        /* TOC (right sidebar) */
+        .toc {
+            width: 220px;
+            min-width: 220px;
+            padding: 2rem 1.5rem;
+            position: sticky;
+            top: 52px;
+            height: calc(100vh - 52px);
+            overflow-y: auto;
+        }
+
+        .toc h4 {
+            color: var(--text-muted);
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.8rem;
+        }
+
+        .toc a {
+            display: block;
+            color: var(--text-muted);
+            text-decoration: none;
+            padding: 0.2rem 0;
+            font-size: 0.8rem;
+            transition: color 0.2s;
+        }
+
+        .toc a:hover { color: var(--accent); }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 2rem;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-top: 3rem;
+        }
+
+        footer a { color: var(--text-secondary); }
+
+        /* Responsive */
+        @media (max-width: 1100px) {
+            .toc { display: none; }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            main { padding: 1.5rem; }
+            header { padding: 0.8rem 1rem; }
+            nav a { margin-left: 1rem; font-size: 0.8rem; }
+            .providers { grid-template-columns: 1fr; }
+            h1 { font-size: 1.6rem; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+    <a href="#" class="logo">
+        <div class="logo-icon">S</div>
+        <div class="logo-text">DuckDB <span>Sudan</span></div>
+    </a>
+    <nav>
+        <a href="https://duckdb.org/docs/" target="_blank">DuckDB Documentation</a>
+        <a href="https://github.com/Osman-Geomatics93/duckdb-sudan-" target="_blank">GitHub</a>
+        <a href="functions.md" target="_blank">Function Reference</a>
+    </nav>
+</header>
+
+<!-- Layout -->
+<div class="layout">
+
+    <!-- Left Sidebar -->
+    <aside class="sidebar">
+        <h4>Getting Started</h4>
+        <a href="#overview" class="active">Overview</a>
+        <a href="#install">Installing &amp; Loading</a>
+        <a href="#example">Quick Example</a>
+        <h4>Data Providers</h4>
+        <a href="#providers">Provider List</a>
+        <a href="#worldbank">World Bank</a>
+        <a href="#who">WHO</a>
+        <a href="#fao">FAO</a>
+        <a href="#unhcr">UNHCR</a>
+        <a href="#ilo">ILO</a>
+        <h4>Geospatial</h4>
+        <a href="#boundaries">Boundaries</a>
+        <a href="#states">States</a>
+        <a href="#geocode">GeoCode</a>
+        <h4>Reference</h4>
+        <a href="#functions">All Functions</a>
+        <a href="#countries">Supported Countries</a>
+        <a href="#building">Building from Source</a>
+    </aside>
+
+    <!-- Main Content -->
+    <main>
+        <h1 id="overview">Sudan Extension <span class="version">v0.1.0</span></h1>
+        <p class="subtitle">Unified SQL access to Sudan's humanitarian, development, and geospatial data from 5 international APIs.</p>
+
+        <div class="badges">
+            <div class="badge badge-yellow">
+                <span class="badge-label">License</span>
+                <span class="badge-value">MIT</span>
+            </div>
+            <div class="badge badge-blue">
+                <span class="badge-label">DuckDB</span>
+                <span class="badge-value">v1.4.4+</span>
+            </div>
+            <div class="badge badge-green">
+                <span class="badge-label">Providers</span>
+                <span class="badge-value">5 APIs</span>
+            </div>
+            <div class="badge badge-purple">
+                <span class="badge-label">Functions</span>
+                <span class="badge-value">12 SQL</span>
+            </div>
+        </div>
+
+        <p>Sudan is experiencing one of the world's largest humanitarian crises, yet its data is scattered across dozens of international APIs with incompatible formats. This extension brings <strong>all publicly available Sudan data into DuckDB</strong> — enabling analysts, researchers, and humanitarian workers to query demographics, economics, health, agriculture, displacement, and geospatial boundaries using standard SQL.</p>
+
+        <img src="demo.png" alt="DuckDB Sudan Extension Demo" class="demo-img">
+
+        <!-- Installing -->
+        <h2 id="install">Installing and Loading</h2>
+        <p>To install and load the <code>sudan</code> extension, run:</p>
+
+        <div class="code-block">
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            <code><span class="kw">INSTALL</span> sudan <span class="kw">FROM</span> community;
+<span class="kw">LOAD</span> sudan;</code>
+        </div>
+
+        <p>The <code>sudan</code> extension is now loaded and ready to use.</p>
+
+        <!-- Quick Example -->
+        <h2 id="example">Quick Example</h2>
+
+        <div class="code-block">
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            <code><span class="cm">-- List all data providers</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="fn">SUDAN_Providers</span>();
+
+<span class="cm">-- Sudan population from World Bank</span>
+<span class="kw">SELECT</span> year, value <span class="kw">FROM</span> <span class="fn">SUDAN_WorldBank</span>(<span class="str">'SP.POP.TOTL'</span>)
+<span class="kw">WHERE</span> year >= <span class="num">2020</span> <span class="kw">ORDER BY</span> year;
+
+<span class="cm">-- Sudan's 18 states with Arabic names</span>
+<span class="kw">SELECT</span> state_name, state_name_ar, iso_code <span class="kw">FROM</span> <span class="fn">SUDAN_States</span>();
+
+<span class="cm">-- Refugees from Sudan (2.4M+ in 2025)</span>
+<span class="kw">SELECT</span> year, value <span class="kw">FROM</span> <span class="fn">SUDAN_UNHCR</span>(<span class="str">'refugees'</span>)
+<span class="kw">WHERE</span> year >= <span class="num">2022</span> <span class="kw">ORDER BY</span> year <span class="kw">DESC</span>;</code>
+        </div>
+
+        <!-- Providers -->
+        <h2 id="providers">Data Providers</h2>
+        <p>The extension connects to 5 international APIs, all accessible through simple SQL functions:</p>
+
+        <div class="providers">
+            <div class="provider-card" id="worldbank">
+                <h4>World Bank</h4>
+                <div class="arabic">البنك الدولي</div>
+                <p>Development indicators, GDP, population, education</p>
+                <code>SUDAN_WorldBank(indicator)</code>
+            </div>
+            <div class="provider-card" id="who">
+                <h4>World Health Organization</h4>
+                <div class="arabic">منظمة الصحة العالمية</div>
+                <p>Health indicators, disease burden, mortality rates</p>
+                <code>SUDAN_WHO(indicator)</code>
+            </div>
+            <div class="provider-card" id="fao">
+                <h4>Food &amp; Agriculture Organization</h4>
+                <div class="arabic">منظمة الأغذية والزراعة</div>
+                <p>Agricultural production, food security, land use</p>
+                <code>SUDAN_FAO(dataset, element)</code>
+            </div>
+            <div class="provider-card" id="unhcr">
+                <h4>UNHCR</h4>
+                <div class="arabic">المفوضية السامية</div>
+                <p>Refugees, IDPs, asylum seekers, displacement data</p>
+                <code>SUDAN_UNHCR(population_type)</code>
+            </div>
+            <div class="provider-card" id="ilo">
+                <h4>International Labour Organization</h4>
+                <div class="arabic">منظمة العمل الدولية</div>
+                <p>Employment, labor force, unemployment statistics</p>
+                <code>SUDAN_ILO(indicator)</code>
+            </div>
+        </div>
+
+        <!-- World Bank Examples -->
+        <h3>World Bank — Population &amp; Demographics</h3>
+        <div class="code-block">
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            <code><span class="cm">-- Compare Sudan with neighbors</span>
+<span class="kw">SELECT</span> country_name, year, value
+<span class="kw">FROM</span> <span class="fn">SUDAN_WorldBank</span>(<span class="str">'SP.POP.TOTL'</span>, countries := [<span class="str">'SDN'</span>, <span class="str">'EGY'</span>, <span class="str">'ETH'</span>, <span class="str">'SSD'</span>])
+<span class="kw">WHERE</span> year = <span class="num">2024</span>
+<span class="kw">ORDER BY</span> value <span class="kw">DESC</span>;
+
+<span class="cm">-- Search for indicators</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="fn">SUDAN_WB_Indicators</span>(search := <span class="str">'GDP'</span>);</code>
+        </div>
+
+        <!-- WHO Examples -->
+        <h3>WHO — Health Data</h3>
+        <div class="code-block">
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            <code><span class="cm">-- Maternal mortality ratio</span>
+<span class="kw">SELECT</span> year, value <span class="kw">FROM</span> <span class="fn">SUDAN_WHO</span>(<span class="str">'MDG_0000000026'</span>)
+<span class="kw">ORDER BY</span> year;
+
+<span class="cm">-- Find health indicators</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="fn">SUDAN_WHO_Indicators</span>(search := <span class="str">'mortality'</span>);</code>
+        </div>
+
+        <!-- UNHCR Examples -->
+        <h3>UNHCR — Displacement &amp; Refugees</h3>
+        <div class="code-block">
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            <code><span class="cm">-- Sudanese refugees worldwide</span>
+<span class="kw">SELECT</span> year, country_asylum_name, value
+<span class="kw">FROM</span> <span class="fn">SUDAN_UNHCR</span>(<span class="str">'refugees'</span>)
+<span class="kw">WHERE</span> year >= <span class="num">2022</span>
+<span class="kw">ORDER BY</span> year <span class="kw">DESC</span>, value <span class="kw">DESC</span>;
+
+<span class="cm">-- Internally displaced persons</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="fn">SUDAN_UNHCR</span>(<span class="str">'idps'</span>);</code>
+        </div>
+
+        <!-- FAO Examples -->
+        <h3>FAO — Agriculture &amp; Food Security</h3>
+        <div class="code-block">
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            <code><span class="cm">-- Crop production in Sudan</span>
+<span class="kw">SELECT</span> item, year, value, unit
+<span class="kw">FROM</span> <span class="fn">SUDAN_FAO</span>(<span class="str">'QCL'</span>, <span class="str">'production'</span>)
+<span class="kw">WHERE</span> year >= <span class="num">2020</span>
+<span class="kw">ORDER BY</span> item, year <span class="kw">DESC</span>;</code>
+        </div>
+
+        <!-- ILO Examples -->
+        <h3>ILO — Labor &amp; Employment</h3>
+        <div class="code-block">
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            <code><span class="cm">-- Unemployment rate by sex and age</span>
+<span class="kw">SELECT</span> sex, classif1, year, value
+<span class="kw">FROM</span> <span class="fn">SUDAN_ILO</span>(<span class="str">'UNE_DEAP_SEX_AGE_RT'</span>)
+<span class="kw">WHERE</span> year = <span class="num">2022</span>
+<span class="kw">ORDER BY</span> sex, classif1;</code>
+        </div>
+
+        <!-- Geospatial -->
+        <h2 id="boundaries">Geospatial Functions</h2>
+        <p>The extension includes embedded geographic data for Sudan's 18 states with bilingual (Arabic/English) names.</p>
+
+        <h3 id="states">SUDAN_States()</h3>
+        <p>Returns all 18 Sudan states with bilingual names, ISO codes, centroids, and GeoJSON geometry.</p>
+        <div class="code-block">
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            <code><span class="kw">SELECT</span> state_name, state_name_ar, iso_code <span class="kw">FROM</span> <span class="fn">SUDAN_States</span>();
+
+<span class="cm">-- Use with DuckDB's spatial extension</span>
+<span class="kw">SELECT</span> state_name, <span class="fn">ST_GeomFromGeoJSON</span>(geojson) <span class="kw">AS</span> geom
+<span class="kw">FROM</span> <span class="fn">SUDAN_States</span>();</code>
+        </div>
+
+        <h3 id="geocode">SUDAN_GeoCode(name)</h3>
+        <p>Scalar function that converts a state name (Arabic or English) to its ISO 3166-2 code.</p>
+        <div class="code-block">
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            <code><span class="kw">SELECT</span> <span class="fn">SUDAN_GeoCode</span>(<span class="str">'Khartoum'</span>);    <span class="cm">-- returns 'SD-KH'</span>
+<span class="kw">SELECT</span> <span class="fn">SUDAN_GeoCode</span>(<span class="str">'الخرطوم'</span>);     <span class="cm">-- returns 'SD-KH'</span></code>
+        </div>
+
+        <!-- All Functions -->
+        <h2 id="functions">All SQL Functions</h2>
+
+        <h3>Discovery &amp; Metadata</h3>
+        <table>
+            <thead>
+                <tr><th>Function</th><th>Type</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>SUDAN_Providers()</code></td><td>Table</td><td>List all 5 data providers with Arabic names and URLs</td></tr>
+                <tr><td><code>SUDAN_WB_Indicators(search)</code></td><td>Table</td><td>Search World Bank indicators by keyword</td></tr>
+                <tr><td><code>SUDAN_WHO_Indicators(search)</code></td><td>Table</td><td>Search WHO GHO indicators by keyword</td></tr>
+                <tr><td><code>SUDAN_Search(query)</code></td><td>Table</td><td>Cross-provider indicator search</td></tr>
+            </tbody>
+        </table>
+
+        <h3>Data Functions</h3>
+        <table>
+            <thead>
+                <tr><th>Function</th><th>Signature</th><th>Source</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>SUDAN_WorldBank</code></td><td><code>(indicator, countries := ['SDN'])</code></td><td>World Bank V2 API</td></tr>
+                <tr><td><code>SUDAN_WHO</code></td><td><code>(indicator, countries := ['SDN'])</code></td><td>WHO GHO OData API</td></tr>
+                <tr><td><code>SUDAN_FAO</code></td><td><code>(dataset, element, countries := ['SDN'])</code></td><td>FAOSTAT API</td></tr>
+                <tr><td><code>SUDAN_UNHCR</code></td><td><code>(population_type, countries := ['SDN'])</code></td><td>UNHCR Population API</td></tr>
+                <tr><td><code>SUDAN_ILO</code></td><td><code>(indicator, countries := ['SDN'])</code></td><td>ILO SDMX API</td></tr>
+            </tbody>
+        </table>
+
+        <h3>Geospatial Functions</h3>
+        <table>
+            <thead>
+                <tr><th>Function</th><th>Type</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>SUDAN_Boundaries(level)</code></td><td>Table</td><td>Admin boundaries as GeoJSON (<code>'country'</code>, <code>'state'</code>, <code>'locality'</code>)</td></tr>
+                <tr><td><code>SUDAN_States()</code></td><td>Table</td><td>18 states with bilingual names, ISO codes, centroids</td></tr>
+                <tr><td><code>SUDAN_GeoCode(name)</code></td><td>Scalar</td><td>State name (Arabic or English) → ISO code</td></tr>
+            </tbody>
+        </table>
+
+        <!-- Countries -->
+        <h2 id="countries">Supported Countries</h2>
+        <p>All data functions default to Sudan but support neighboring countries for regional comparison via the <code>countries</code> parameter.</p>
+
+        <div class="countries-grid">
+            <div class="country-item"><span class="iso">SDN</span><span class="name">Sudan</span><span class="ar">السودان</span></div>
+            <div class="country-item"><span class="iso">EGY</span><span class="name">Egypt</span><span class="ar">مصر</span></div>
+            <div class="country-item"><span class="iso">ETH</span><span class="name">Ethiopia</span><span class="ar">إثيوبيا</span></div>
+            <div class="country-item"><span class="iso">TCD</span><span class="name">Chad</span><span class="ar">تشاد</span></div>
+            <div class="country-item"><span class="iso">SSD</span><span class="name">South Sudan</span><span class="ar">جنوب السودان</span></div>
+            <div class="country-item"><span class="iso">ERI</span><span class="name">Eritrea</span><span class="ar">إريتريا</span></div>
+            <div class="country-item"><span class="iso">LBY</span><span class="name">Libya</span><span class="ar">ليبيا</span></div>
+            <div class="country-item"><span class="iso">CAF</span><span class="name">Central African Rep.</span><span class="ar">أفريقيا الوسطى</span></div>
+        </div>
+
+        <div class="code-block">
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            <code><span class="cm">-- Compare across neighbors</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="fn">SUDAN_WorldBank</span>(<span class="str">'SP.POP.TOTL'</span>, countries := [<span class="str">'SDN'</span>, <span class="str">'EGY'</span>, <span class="str">'ETH'</span>]);
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="fn">SUDAN_UNHCR</span>(<span class="str">'refugees'</span>, countries := [<span class="str">'SDN'</span>, <span class="str">'SSD'</span>]);
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="fn">SUDAN_FAO</span>(<span class="str">'QCL'</span>, <span class="str">'production'</span>, countries := [<span class="str">'SDN'</span>, <span class="str">'EGY'</span>]);</code>
+        </div>
+
+        <!-- Building -->
+        <h2 id="building">Building from Source</h2>
+
+        <div class="info-box">
+            <strong>Prerequisites:</strong> CMake 3.10+, C++17 compiler (MSVC 2019+, GCC 9+, Clang 10+), OpenSSL, Ninja
+        </div>
+
+        <h3>Windows</h3>
+        <div class="code-block">
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            <code>git clone --recurse-submodules https://github.com/Osman-Geomatics93/duckdb-sudan-.git
+cd duckdb-sudan-
+build_release.bat
+build\release\duckdb.exe -unsigned</code>
+        </div>
+
+        <h3>Linux / macOS</h3>
+        <div class="code-block">
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            <code>git clone --recurse-submodules https://github.com/Osman-Geomatics93/duckdb-sudan-.git
+cd duckdb-sudan-
+GEN=ninja make release
+./build/release/duckdb -unsigned</code>
+        </div>
+
+        <h3>Testing</h3>
+        <div class="code-block">
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            <code><span class="cm"># Run all 9 test cases (47 assertions)</span>
+./build/release/test/unittest "*sudan*"</code>
+        </div>
+
+    </main>
+
+    <!-- Right TOC -->
+    <aside class="toc">
+        <h4>In This Article</h4>
+        <a href="#install">Installing &amp; Loading</a>
+        <a href="#example">Quick Example</a>
+        <a href="#providers">Data Providers</a>
+        <a href="#boundaries">Geospatial Functions</a>
+        <a href="#functions">All Functions</a>
+        <a href="#countries">Supported Countries</a>
+        <a href="#building">Building from Source</a>
+    </aside>
+
+</div>
+
+<!-- Footer -->
+<footer>
+    <p>Built on <a href="https://duckdb.org" target="_blank">DuckDB</a> · Inspired by <a href="https://github.com/ahuarte47/duckdb-eurostat" target="_blank">duckdb-eurostat</a> · Data from <a href="https://data.worldbank.org/" target="_blank">World Bank</a>, <a href="https://www.who.int/data/gho" target="_blank">WHO</a>, <a href="https://www.fao.org/faostat/" target="_blank">FAO</a>, <a href="https://www.unhcr.org/refugee-statistics/" target="_blank">UNHCR</a>, <a href="https://ilostat.ilo.org/" target="_blank">ILO</a></p>
+    <p style="margin-top: 0.5rem;">© 2025 <a href="https://github.com/Osman-Geomatics93" target="_blank">Osman-Geomatics93</a> · MIT License</p>
+</footer>
+
+<script>
+function copyCode(btn) {
+    const code = btn.parentElement.querySelector('code');
+    const text = code.innerText;
+    navigator.clipboard.writeText(text).then(() => {
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = 'Copy', 2000);
+    });
+}
+
+// Active sidebar link on scroll
+const sections = document.querySelectorAll('h2[id], h3[id]');
+const sidebarLinks = document.querySelectorAll('.sidebar a');
+
+window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(section => {
+        const top = section.offsetTop - 80;
+        if (pageYOffset >= top) current = section.getAttribute('id');
+    });
+    sidebarLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href') === '#' + current) {
+            link.classList.add('active');
+        }
+    });
+});
+</script>
+
+</body>
+</html>
