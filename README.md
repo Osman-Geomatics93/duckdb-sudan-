@@ -183,12 +183,17 @@ SELECT * FROM SUDAN_WB_Indicators(search := 'GDP');
 
 ### Geospatial Data
 
+Real polygon boundaries from [GADM v4.1](https://gadm.org/) are embedded in the extension — works offline, no network needed.
+
 ```sql
--- Get all 18 state boundaries (embedded, works offline)
+-- Get all 18 state boundaries as MultiPolygon GeoJSON (embedded, works offline)
 SELECT state_name, state_name_ar, iso_code, geojson
 FROM SUDAN_Boundaries('state');
 
--- List Sudan's 18 states with bilingual names
+-- Country outline
+SELECT * FROM SUDAN_Boundaries('country');
+
+-- List Sudan's 18 states with bilingual names and polygon boundaries
 SELECT state_name, state_name_ar, iso_code FROM SUDAN_States();
 
 -- Lookup state code from Arabic name
@@ -196,7 +201,7 @@ SELECT SUDAN_GeoCode('الخرطوم');  -- returns 'SD-KH'
 
 -- Use with DuckDB's spatial extension (requires: INSTALL spatial; LOAD spatial;)
 SELECT state_name, ST_GeomFromGeoJSON(geojson) AS geom
-FROM SUDAN_States();
+FROM SUDAN_Boundaries('state');
 ```
 
 ## Supported Countries
@@ -246,8 +251,8 @@ SELECT * FROM SUDAN_FAO('QCL', 'production', countries := ['SDN', 'EGY']);
 
 | Function | Type | Description |
 |----------|------|-------------|
-| `SUDAN_Boundaries(level)` | Table | Admin boundaries as GeoJSON (`'country'`, `'state'`, `'locality'`) |
-| `SUDAN_States()` | Table | 18 states with bilingual names, ISO codes, centroids |
+| `SUDAN_Boundaries(level)` | Table | Admin boundaries as MultiPolygon GeoJSON (`'country'`, `'state'`, `'locality'`). Source: GADM v4.1 |
+| `SUDAN_States()` | Table | 18 states with bilingual names, ISO codes, centroids, and polygon boundaries |
 | `SUDAN_GeoCode(name)` | Scalar | State name (Arabic or English) to ISO code |
 
 See [docs/functions.md](docs/functions.md) for the complete function reference with all return columns.
@@ -295,7 +300,7 @@ SELECT * FROM SUDAN_Providers();
 ### Testing
 
 ```bash
-# Run all 9 test cases (47 assertions)
+# Run all 9 test cases (52 assertions)
 ./build/release/test/unittest "*sudan*"
 
 # Windows
@@ -326,7 +331,7 @@ src/
     ├── fao/                     # FAOSTAT API
     ├── unhcr/                   # UNHCR Population API
     ├── ilo/                     # ILO SDMX API
-    ├── geo/                     # Geospatial functions
+    ├── geo/                     # Geospatial functions (GADM v4.1 polygon boundaries embedded)
     └── info/                    # Cross-provider search
 ```
 
@@ -343,4 +348,4 @@ MIT License - see [LICENSE](LICENSE) for details.
 ## Acknowledgments
 
 - Built on [DuckDB](https://duckdb.org/) and inspired by the [duckdb-eurostat](https://github.com/ahuarte47/duckdb-eurostat) extension
-- Data sourced from: [World Bank](https://data.worldbank.org/), [WHO GHO](https://www.who.int/data/gho), [FAOSTAT](https://www.fao.org/faostat/), [UNHCR](https://www.unhcr.org/refugee-statistics/), [ILOSTAT](https://ilostat.ilo.org/)
+- Data sourced from: [World Bank](https://data.worldbank.org/), [WHO GHO](https://www.who.int/data/gho), [FAOSTAT](https://www.fao.org/faostat/), [UNHCR](https://www.unhcr.org/refugee-statistics/), [ILOSTAT](https://ilostat.ilo.org/), [GADM](https://gadm.org/) (boundary polygons)

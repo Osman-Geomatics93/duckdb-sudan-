@@ -146,7 +146,7 @@ SELECT * FROM SUDAN_ILO('UNE_DEAP_SEX_AGE_RT');
 ## Geospatial Functions
 
 ### `SUDAN_Boundaries(level)`
-Returns administrative boundaries as GeoJSON strings.
+Returns administrative boundaries as GeoJSON MultiPolygon strings. Country and state boundaries are real polygon geometries from GADM v4.1, embedded in the extension (works offline).
 
 **Positional Parameters:**
 - `level` (VARCHAR, required) — 'country', 'state', or 'locality'
@@ -156,20 +156,36 @@ Returns administrative boundaries as GeoJSON strings.
 - State: `state_name VARCHAR, state_name_ar VARCHAR, iso_code VARCHAR, geojson VARCHAR`
 - Locality: `locality_name VARCHAR, locality_name_ar VARCHAR, state_name VARCHAR, geojson VARCHAR`
 
+**Data source:** [GADM v4.1](https://gadm.org/) — coordinates simplified to 3 decimal places (~111m accuracy)
+
 ```sql
+-- Get all 18 state boundaries as MultiPolygon GeoJSON
 SELECT state_name, state_name_ar, iso_code, geojson FROM SUDAN_Boundaries('state');
+
+-- Country outline (union of all state polygons)
+SELECT * FROM SUDAN_Boundaries('country');
+
+-- Use with spatial extension
+INSTALL spatial; LOAD spatial;
+SELECT state_name, ST_GeomFromGeoJSON(geojson) AS geom FROM SUDAN_Boundaries('state');
 ```
 
 ### `SUDAN_States()`
-Returns all 18 Sudan states with bilingual names, ISO codes, centroids, and GeoJSON.
+Returns all 18 Sudan states with bilingual names, ISO codes, centroids, and polygon GeoJSON boundaries.
 
 **Returns:** `state_name VARCHAR, state_name_ar VARCHAR, iso_code VARCHAR, centroid_lon DOUBLE, centroid_lat DOUBLE, geojson VARCHAR`
+
+The `geojson` column contains real MultiPolygon boundary geometry (from GADM v4.1), not point centroids. Centroid coordinates are available separately in `centroid_lon`/`centroid_lat`.
 
 ```sql
 SELECT * FROM SUDAN_States();
 
--- Use with spatial extension
+-- Use with spatial extension for mapping
+INSTALL spatial; LOAD spatial;
 SELECT state_name, ST_GeomFromGeoJSON(geojson) AS geom FROM SUDAN_States();
+
+-- Check boundary sizes (780 to 53,852 chars per state)
+SELECT state_name, LENGTH(geojson) as geojson_size FROM SUDAN_States() ORDER BY geojson_size DESC;
 ```
 
 ### `SUDAN_GeoCode(state_name)` (Scalar)
