@@ -36,44 +36,68 @@ Plus **12 SQL functions** including indicator search, geospatial boundaries, and
 
 ## Quick Start
 
-### Install from Custom Repository (Recommended)
+### Option A: Install from Online Repository (Recommended)
 
+No building required — works with any DuckDB v1.4.4+ installation.
+
+**Step 1:** Launch DuckDB with unsigned extension support
+```cmd
+duckdb -unsigned
+```
+
+**Step 2:** Install and load the extension
 ```sql
--- In DuckDB v1.4.4+ (launch with -unsigned flag)
-INSTALL httpfs; LOAD httpfs;
+INSTALL httpfs;
+LOAD httpfs;
 SET custom_extension_repository = 'https://osman-geomatics93.github.io/duckdb-sudan-';
 INSTALL sudan;
 LOAD sudan;
-
--- Query!
-SELECT * FROM SUDAN_Providers();
 ```
 
-### Build from Source (Alternative)
+**Step 3:** Query!
+```sql
+SELECT * FROM SUDAN_Providers();
+SELECT year, value FROM SUDAN_WorldBank('SP.POP.TOTL') WHERE year >= 2020 ORDER BY year;
+SELECT state_name, state_name_ar, iso_code FROM SUDAN_States();
+```
 
-```bash
+### Option B: Build from Source
+
+**Step 1:** Clone and build
+```cmd
 git clone --recurse-submodules https://github.com/Osman-Geomatics93/duckdb-sudan-.git
 cd duckdb-sudan-
-
-# Windows
 build_release.bat
-
-# Linux / macOS
-GEN=ninja make release
 ```
 
-```bash
-./build/release/duckdb -unsigned    # Linux/macOS
-build\release\duckdb.exe -unsigned  # Windows
+**Step 2:** Launch DuckDB
+```cmd
+build\release\duckdb.exe -unsigned
 ```
 
+**Step 3:** Load and query
 ```sql
 LOAD sudan;
 SELECT * FROM SUDAN_Providers();
 ```
 
-> **Coming soon** — Once the [community extensions PR](https://github.com/duckdb/community-extensions/pull/1235) is merged:
-> `INSTALL sudan FROM community; LOAD sudan;`
+> **Linux / macOS:** Replace `build_release.bat` with `GEN=ninja make release` and use `./build/release/duckdb -unsigned`
+
+### Option C: Community Registry (Coming Soon)
+
+Once the [community extensions PR](https://github.com/duckdb/community-extensions/pull/1235) is merged:
+```sql
+INSTALL sudan FROM community;
+LOAD sudan;
+```
+
+### Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| `LNK1104: cannot open file 'duckdb.exe'` | Close any running DuckDB instance before building |
+| `HTTP Error: 404` on `INSTALL sudan FROM community` | Use **Option A** or **Option B** above — community registry pending approval |
+| `requires the extension httpfs` | Run `INSTALL httpfs; LOAD httpfs;` before setting the custom repository |
 
 ### Population & Demographics
 
