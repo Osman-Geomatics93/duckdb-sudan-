@@ -1,453 +1,489 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DuckDB Sudan Extension</title>
+    <title>DuckDB Sudan Extension — Unified SQL for Sudan's Data</title>
+    <meta name="description" content="Query Sudan's humanitarian, development, and geospatial data from 5 international APIs using SQL in DuckDB.">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&family=Noto+Kufi+Arabic:wght@400;600;700&display=swap" rel="stylesheet">
+
     <style>
+        /* ===== CSS Variables ===== */
         :root {
-            --bg-primary: #1a1a2e;
-            --bg-secondary: #16213e;
-            --bg-card: #1e2a45;
-            --bg-code: #0d1525;
-            --text-primary: #e0e0e0;
-            --text-secondary: #a0a0b0;
-            --text-muted: #6c7086;
-            --accent: #ffcc00;
-            --accent-hover: #ffd633;
-            --link: #5eadff;
-            --link-hover: #7dc0ff;
-            --green: #50c878;
-            --orange: #ff8c42;
-            --purple: #b39ddb;
-            --red: #ef5350;
-            --border: #2a3555;
-            --code-keyword: #c792ea;
-            --code-string: #c3e88d;
-            --code-function: #82aaff;
-            --code-comment: #546e7a;
-            --code-number: #f78c6c;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            --font-arabic: 'Noto Kufi Arabic', 'Inter', sans-serif;
+            --radius: 12px;
+            --radius-sm: 8px;
+            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0b0f1a;
+            --bg-secondary: #111827;
+            --bg-card: #1a2235;
+            --bg-code: #0d1117;
+            --bg-hover: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent: #fbbf24;
+            --accent-glow: rgba(251, 191, 36, 0.15);
+            --link: #60a5fa;
+            --green: #34d399;
+            --red: #f87171;
+            --orange: #fb923c;
+            --purple: #a78bfa;
+            --cyan: #22d3ee;
+            --border: #1e293b;
+            --border-hover: #334155;
+            --shadow: 0 4px 24px rgba(0,0,0,0.3);
+            --code-kw: #c792ea;
+            --code-str: #c3e88d;
+            --code-fn: #82aaff;
+            --code-cm: #546e7a;
+            --code-num: #f78c6c;
+            --glass: rgba(17, 24, 39, 0.8);
+        }
+
+        [data-theme="light"] {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-card: #ffffff;
+            --bg-code: #f1f5f9;
+            --bg-hover: #f1f5f9;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            --accent: #d97706;
+            --accent-glow: rgba(217, 119, 6, 0.1);
+            --link: #2563eb;
+            --green: #059669;
+            --red: #dc2626;
+            --orange: #ea580c;
+            --purple: #7c3aed;
+            --cyan: #0891b2;
+            --border: #e2e8f0;
+            --border-hover: #cbd5e1;
+            --shadow: 0 4px 24px rgba(0,0,0,0.08);
+            --code-kw: #8b5cf6;
+            --code-str: #059669;
+            --code-fn: #2563eb;
+            --code-cm: #94a3b8;
+            --code-num: #ea580c;
+            --glass: rgba(255, 255, 255, 0.9);
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-family: var(--font-sans);
             background: var(--bg-primary);
             color: var(--text-primary);
             line-height: 1.7;
+            transition: background var(--transition), color var(--transition);
         }
 
-        /* Header */
+        [data-lang="ar"] .ar-text { display: inline; }
+        [data-lang="ar"] .en-text { display: none; }
+        [data-lang="en"] .ar-text { display: none; }
+        [data-lang="en"] .en-text { display: inline; }
+        [data-lang="ar"] .ar-block { display: block; }
+        [data-lang="ar"] .en-block { display: none; }
+        [data-lang="en"] .ar-block { display: none; }
+        [data-lang="en"] .en-block { display: block; }
+        [data-lang="ar"] { direction: rtl; }
+        [data-lang="ar"] header, [data-lang="ar"] .hero, [data-lang="ar"] .section { direction: rtl; }
+        [data-lang="ar"] .code-block, [data-lang="ar"] code { direction: ltr; text-align: left; }
+
+        /* ===== Toast ===== */
+        .toast-container {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .toast {
+            background: var(--bg-card);
+            border: 1px solid var(--green);
+            color: var(--green);
+            padding: 0.6rem 1.2rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            font-weight: 500;
+            box-shadow: var(--shadow);
+            animation: slideIn 0.3s ease, fadeOut 0.3s ease 2s forwards;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        @keyframes slideIn { from { transform: translateX(100px); opacity: 0; } }
+        @keyframes fadeOut { to { transform: translateY(-10px); opacity: 0; } }
+
+        /* ===== Header ===== */
         header {
-            background: var(--bg-secondary);
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border-bottom: 1px solid var(--border);
-            padding: 0.8rem 2rem;
+            padding: 0 2rem;
+            height: 56px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             position: sticky;
             top: 0;
             z-index: 100;
+            direction: ltr;
         }
 
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-            text-decoration: none;
-        }
-
+        .logo { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; }
         .logo-icon {
-            width: 32px;
-            height: 32px;
-            background: var(--accent);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 900;
-            font-size: 16px;
-            color: #1a1a2e;
+            width: 30px; height: 30px; background: var(--accent); border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 900; font-size: 14px; color: #0b0f1a;
         }
+        .logo-text { font-size: 1.05rem; font-weight: 700; color: var(--text-primary); }
+        .logo-text span { color: var(--accent); }
 
-        .logo-text {
-            font-size: 1.2rem;
-            font-weight: 700;
-            color: var(--text-primary);
+        .header-right { display: flex; align-items: center; gap: 0.5rem; }
+
+        .header-btn {
+            background: none; border: 1px solid var(--border); color: var(--text-secondary);
+            padding: 0.35rem 0.7rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem;
+            font-family: var(--font-sans); transition: all var(--transition); display: flex; align-items: center; gap: 0.3rem;
         }
+        .header-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-        .logo-text span {
-            color: var(--accent);
-        }
-
+        nav { display: flex; align-items: center; gap: 0.3rem; }
         nav a {
-            color: var(--text-secondary);
-            text-decoration: none;
-            margin-left: 2rem;
-            font-size: 0.9rem;
-            transition: color 0.2s;
+            color: var(--text-secondary); text-decoration: none; padding: 0.35rem 0.7rem;
+            border-radius: 6px; font-size: 0.85rem; transition: all var(--transition);
         }
+        nav a:hover { color: var(--accent); background: var(--accent-glow); }
 
-        nav a:hover { color: var(--accent); }
-
-        /* Layout */
-        .layout {
-            display: flex;
-            max-width: 1400px;
-            margin: 0 auto;
+        /* ===== Search Modal ===== */
+        .search-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px); z-index: 200; align-items: flex-start; justify-content: center;
+            padding-top: 15vh;
         }
-
-        /* Sidebar */
-        .sidebar {
-            width: 240px;
-            min-width: 240px;
-            padding: 2rem 1.5rem;
-            border-right: 1px solid var(--border);
-            position: sticky;
-            top: 52px;
-            height: calc(100vh - 52px);
-            overflow-y: auto;
+        .search-overlay.active { display: flex; }
+        .search-box {
+            background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius);
+            width: 90%; max-width: 600px; overflow: hidden; box-shadow: var(--shadow);
         }
-
-        .sidebar a {
-            display: block;
-            color: var(--text-secondary);
-            text-decoration: none;
-            padding: 0.35rem 0;
-            font-size: 0.88rem;
-            transition: color 0.2s;
-        }
-
-        .sidebar a:hover, .sidebar a.active {
-            color: var(--accent);
-        }
-
-        .sidebar h4 {
-            color: var(--text-muted);
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            margin-top: 1.5rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .sidebar h4:first-child { margin-top: 0; }
-
-        /* Main Content */
-        main {
-            flex: 1;
-            padding: 2.5rem 3rem;
-            max-width: 900px;
-        }
-
-        h1 {
-            font-size: 2.2rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            color: #fff;
-        }
-
-        h1 .version {
-            font-size: 0.9rem;
-            color: var(--accent);
-            background: rgba(255, 204, 0, 0.12);
-            padding: 0.15rem 0.6rem;
-            border-radius: 12px;
-            margin-left: 0.8rem;
-            vertical-align: middle;
-        }
-
-        .subtitle {
-            font-size: 1.1rem;
-            color: var(--text-secondary);
-            margin-bottom: 2rem;
-        }
-
-        h2 {
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin-top: 3rem;
-            margin-bottom: 1rem;
-            color: #fff;
-            padding-bottom: 0.4rem;
+        .search-input {
+            width: 100%; padding: 1rem 1.2rem; background: none; border: none;
+            color: var(--text-primary); font-size: 1.05rem; font-family: var(--font-sans); outline: none;
             border-bottom: 1px solid var(--border);
         }
-
-        h3 {
-            font-size: 1.15rem;
-            font-weight: 600;
-            margin-top: 2rem;
-            margin-bottom: 0.6rem;
-            color: var(--text-primary);
+        .search-input::placeholder { color: var(--text-muted); }
+        .search-results { max-height: 400px; overflow-y: auto; padding: 0.5rem; }
+        .search-item {
+            padding: 0.6rem 0.8rem; border-radius: 6px; cursor: pointer;
+            display: flex; align-items: center; gap: 0.6rem; transition: background var(--transition);
         }
-
-        p { margin-bottom: 1rem; }
-
-        a { color: var(--link); text-decoration: none; }
-        a:hover { color: var(--link-hover); text-decoration: underline; }
-
-        /* Badges */
-        .badges {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 1.5rem;
-            flex-wrap: wrap;
+        .search-item:hover { background: var(--bg-hover); }
+        .search-item .fn-name { color: var(--code-fn); font-family: var(--font-mono); font-size: 0.9rem; }
+        .search-item .fn-desc { color: var(--text-muted); font-size: 0.8rem; }
+        .search-item .fn-tag {
+            margin-left: auto; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 4px;
+            background: var(--accent-glow); color: var(--accent); font-weight: 600;
         }
+        .search-empty { padding: 2rem; text-align: center; color: var(--text-muted); }
 
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            font-size: 0.78rem;
-            border-radius: 6px;
-            overflow: hidden;
-            border: 1px solid var(--border);
-        }
-
-        .badge-label {
-            padding: 0.25rem 0.5rem;
-            background: var(--bg-card);
-            color: var(--text-secondary);
-        }
-
-        .badge-value {
-            padding: 0.25rem 0.5rem;
-            font-weight: 600;
-        }
-
-        .badge-green .badge-value { background: #1b4332; color: var(--green); }
-        .badge-yellow .badge-value { background: #3d2e00; color: var(--accent); }
-        .badge-blue .badge-value { background: #1a2744; color: var(--link); }
-        .badge-purple .badge-value { background: #2d1f4e; color: var(--purple); }
-
-        /* Code blocks */
-        .code-block {
-            background: var(--bg-code);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 1.2rem 1.5rem;
-            margin: 1rem 0 1.5rem;
-            overflow-x: auto;
+        /* ===== Hero ===== */
+        .hero {
+            padding: 5rem 2rem 3rem;
+            text-align: center;
             position: relative;
-            font-size: 0.88rem;
+            overflow: hidden;
+            direction: ltr;
         }
 
-        .code-block code {
-            font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
-            line-height: 1.6;
+        .hero::before {
+            content: ''; position: absolute; inset: 0;
+            background: radial-gradient(ellipse at 50% 0%, var(--accent-glow) 0%, transparent 60%);
+            pointer-events: none;
         }
 
-        .copy-btn {
-            position: absolute;
-            top: 0.6rem;
-            right: 0.6rem;
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            color: var(--text-secondary);
-            padding: 0.3rem 0.5rem;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.75rem;
-            transition: all 0.2s;
+        .hero h1 {
+            font-size: 3.2rem; font-weight: 900; letter-spacing: -0.03em;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent) 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text; margin-bottom: 1rem; position: relative;
         }
 
-        .copy-btn:hover { background: var(--border); color: var(--text-primary); }
-
-        .kw { color: var(--code-keyword); }
-        .fn { color: var(--code-function); }
-        .str { color: var(--code-string); }
-        .cm { color: var(--code-comment); }
-        .num { color: var(--code-number); }
-        .op { color: var(--text-secondary); }
-
-        /* Inline code */
-        code {
-            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
-            background: var(--bg-code);
-            padding: 0.15rem 0.4rem;
-            border-radius: 4px;
-            font-size: 0.85em;
-            border: 1px solid var(--border);
+        .hero .subtitle {
+            font-size: 1.2rem; color: var(--text-secondary); max-width: 700px;
+            margin: 0 auto 2.5rem; line-height: 1.8;
         }
 
-        /* Tables */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 1rem 0 1.5rem;
-            font-size: 0.9rem;
+        /* Counters */
+        .counters {
+            display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap;
+            margin-bottom: 2.5rem; position: relative;
         }
 
-        th {
-            background: var(--bg-card);
-            padding: 0.7rem 1rem;
-            text-align: left;
-            font-weight: 600;
-            color: var(--text-primary);
-            border-bottom: 2px solid var(--border);
+        .counter-card {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+            padding: 1.5rem 2rem; min-width: 160px; transition: all var(--transition);
+        }
+        .counter-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow); }
+
+        .counter-value {
+            font-size: 2.2rem; font-weight: 800; color: var(--accent);
+            font-variant-numeric: tabular-nums;
+        }
+        .counter-label { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem; font-weight: 500; }
+
+        /* Install box */
+        .install-box {
+            display: inline-block; background: var(--bg-code); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 1rem 1.5rem; font-family: var(--font-mono);
+            font-size: 0.95rem; position: relative; text-align: left;
         }
 
-        td {
-            padding: 0.6rem 1rem;
-            border-bottom: 1px solid var(--border);
-            color: var(--text-secondary);
+        /* ===== Sections ===== */
+        .section {
+            max-width: 1100px; margin: 0 auto; padding: 3rem 2rem;
+            direction: ltr;
         }
 
-        tr:hover td { background: rgba(255, 255, 255, 0.02); }
-
-        td code {
-            color: var(--code-function);
-            background: rgba(130, 170, 255, 0.08);
-            border-color: rgba(130, 170, 255, 0.15);
+        .section-header {
+            text-align: center; margin-bottom: 2.5rem;
         }
 
-        /* Provider cards */
-        .providers {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1rem;
-            margin: 1.5rem 0;
+        .section-header h2 {
+            font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
+        }
+
+        .section-header p { color: var(--text-secondary); max-width: 600px; margin: 0 auto; }
+
+        .divider {
+            width: 60px; height: 3px; background: var(--accent); border-radius: 2px;
+            margin: 0 auto 1rem;
+        }
+
+        /* ===== Provider Cards ===== */
+        .providers-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.2rem; margin: 2rem 0;
         }
 
         .provider-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 1.2rem 1.5rem;
-            transition: border-color 0.2s;
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+            padding: 1.5rem; transition: all var(--transition); position: relative; overflow: hidden;
+        }
+        .provider-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow); }
+
+        .provider-card .status-dot {
+            width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+            margin-right: 0.4rem; animation: pulse 2s infinite;
+        }
+        .status-dot.online { background: var(--green); }
+        .status-dot.offline { background: var(--red); }
+        .status-dot.checking { background: var(--text-muted); }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
         }
 
-        .provider-card:hover { border-color: var(--accent); }
+        .provider-card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.15rem; }
+        .provider-card .arabic-name {
+            color: var(--accent); font-size: 0.88rem; font-family: var(--font-arabic);
+            margin-bottom: 0.5rem; direction: rtl; display: block; text-align: right;
+        }
+        .provider-card p { color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 0.6rem; }
+        .provider-card code { font-size: 0.82rem; }
 
-        .provider-card h4 {
-            color: #fff;
-            font-size: 1rem;
-            margin-bottom: 0.2rem;
+        /* ===== Charts ===== */
+        .charts-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 1.5rem; margin: 2rem 0;
+        }
+        .chart-card {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+            padding: 1.5rem; transition: border-color var(--transition);
+        }
+        .chart-card:hover { border-color: var(--border-hover); }
+        .chart-card h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 1rem; }
+        .chart-card canvas { width: 100% !important; }
+
+        /* ===== Map ===== */
+        .map-container {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+            overflow: hidden; margin: 2rem 0; height: 500px; position: relative;
+        }
+        #sudan-map { height: 100%; width: 100%; }
+
+        /* ===== SQL Playground ===== */
+        .playground {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+            overflow: hidden; margin: 2rem 0;
+        }
+        .playground-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0.8rem 1.2rem; border-bottom: 1px solid var(--border);
+            background: var(--bg-secondary);
+        }
+        .playground-header span { font-size: 0.85rem; font-weight: 600; }
+        .playground-tabs { display: flex; gap: 0.3rem; }
+        .playground-tab {
+            padding: 0.3rem 0.8rem; border-radius: 6px; font-size: 0.78rem;
+            cursor: pointer; border: 1px solid var(--border); background: none;
+            color: var(--text-secondary); font-family: var(--font-sans); transition: all var(--transition);
+        }
+        .playground-tab.active { background: var(--accent); color: #0b0f1a; border-color: var(--accent); font-weight: 600; }
+        .playground-editor {
+            padding: 1.2rem 1.5rem; font-family: var(--font-mono); font-size: 0.88rem;
+            min-height: 120px; background: var(--bg-code); border-bottom: 1px solid var(--border);
+        }
+        .playground-result {
+            padding: 1rem 1.5rem; font-family: var(--font-mono); font-size: 0.82rem;
+            max-height: 300px; overflow: auto; color: var(--text-secondary);
+        }
+        .playground-result table { width: 100%; font-size: 0.82rem; }
+        .playground-result th {
+            text-align: left; padding: 0.4rem 0.8rem; border-bottom: 2px solid var(--border);
+            color: var(--text-primary); font-weight: 600;
+        }
+        .playground-result td { padding: 0.35rem 0.8rem; border-bottom: 1px solid var(--border); }
+        .run-btn {
+            background: var(--green); color: #0b0f1a; border: none; padding: 0.35rem 1rem;
+            border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer;
+            font-family: var(--font-sans); transition: all var(--transition);
+        }
+        .run-btn:hover { filter: brightness(1.1); }
+
+        /* ===== Code Blocks ===== */
+        .code-block {
+            background: var(--bg-code); border: 1px solid var(--border); border-radius: var(--radius-sm);
+            padding: 1.2rem 1.5rem; margin: 1rem 0 1.5rem; overflow-x: auto;
+            position: relative; font-size: 0.88rem;
+        }
+        .code-block code { font-family: var(--font-mono); line-height: 1.7; white-space: pre; }
+        .copy-btn {
+            position: absolute; top: 0.6rem; right: 0.6rem; background: var(--bg-card);
+            border: 1px solid var(--border); color: var(--text-secondary); padding: 0.3rem 0.6rem;
+            border-radius: 6px; cursor: pointer; font-size: 0.75rem; transition: all var(--transition);
+            font-family: var(--font-sans);
+        }
+        .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .kw { color: var(--code-kw); } .fn { color: var(--code-fn); } .str { color: var(--code-str); }
+        .cm { color: var(--code-cm); } .num { color: var(--code-num); }
+
+        code {
+            font-family: var(--font-mono); background: var(--bg-code); padding: 0.15rem 0.4rem;
+            border-radius: 4px; font-size: 0.85em; border: 1px solid var(--border);
         }
 
-        .provider-card .arabic {
-            color: var(--accent);
-            font-size: 0.85rem;
-            margin-bottom: 0.5rem;
-            direction: rtl;
+        /* ===== Functions Table ===== */
+        .fn-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; font-size: 0.9rem; }
+        .fn-table th {
+            background: var(--bg-card); padding: 0.7rem 1rem; text-align: left; font-weight: 600;
+            border-bottom: 2px solid var(--border);
         }
-
-        .provider-card p {
-            color: var(--text-secondary);
-            font-size: 0.85rem;
-            margin-bottom: 0.5rem;
+        .fn-table td { padding: 0.6rem 1rem; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+        .fn-table tr:hover td { background: var(--bg-hover); }
+        .fn-table td code { color: var(--code-fn); background: rgba(96, 165, 250, 0.08); border-color: rgba(96, 165, 250, 0.15); }
+        .fn-tag {
+            font-size: 0.7rem; padding: 0.12rem 0.45rem; border-radius: 4px; font-weight: 600;
         }
+        .fn-tag.table { background: rgba(52, 211, 153, 0.1); color: var(--green); }
+        .fn-tag.scalar { background: rgba(167, 139, 250, 0.1); color: var(--purple); }
 
-        .provider-card code {
-            font-size: 0.8rem;
-        }
-
-        /* Country flags grid */
+        /* ===== Countries Grid ===== */
         .countries-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 0.5rem;
-            margin: 1rem 0 1.5rem;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 0.6rem; margin: 1.5rem 0;
         }
-
         .country-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 0.8rem;
-            background: var(--bg-card);
-            border-radius: 6px;
-            font-size: 0.88rem;
+            display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem 1rem;
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+            transition: border-color var(--transition);
         }
+        .country-item:hover { border-color: var(--accent); }
+        .country-item .iso { color: var(--accent); font-weight: 700; font-family: var(--font-mono); min-width: 2.5rem; }
+        .country-item .ar { color: var(--text-muted); margin-left: auto; font-family: var(--font-arabic); direction: rtl; }
 
-        .country-item .iso {
-            color: var(--accent);
-            font-weight: 700;
-            font-family: monospace;
-            min-width: 2.5rem;
+        /* ===== Changelog ===== */
+        .timeline { position: relative; padding-left: 2rem; }
+        .timeline::before {
+            content: ''; position: absolute; left: 0.5rem; top: 0; bottom: 0;
+            width: 2px; background: var(--border);
         }
-
-        .country-item .name { color: var(--text-primary); }
-        .country-item .ar { color: var(--text-muted); margin-left: auto; direction: rtl; }
-
-        /* Info box */
-        .info-box {
-            background: rgba(94, 173, 255, 0.06);
-            border-left: 3px solid var(--link);
-            padding: 1rem 1.2rem;
-            border-radius: 0 8px 8px 0;
-            margin: 1rem 0 1.5rem;
-            font-size: 0.9rem;
+        .timeline-item { position: relative; margin-bottom: 2rem; }
+        .timeline-item::before {
+            content: ''; position: absolute; left: -1.65rem; top: 0.4rem;
+            width: 10px; height: 10px; border-radius: 50%; background: var(--accent);
+            border: 2px solid var(--bg-primary);
         }
+        .timeline-item h4 { font-size: 1rem; font-weight: 700; margin-bottom: 0.2rem; }
+        .timeline-item .date { color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.4rem; }
+        .timeline-item p { color: var(--text-secondary); font-size: 0.88rem; }
+        .timeline-item ul { color: var(--text-secondary); font-size: 0.88rem; padding-left: 1.2rem; }
+        .timeline-item li { margin-bottom: 0.2rem; }
 
-        .info-box strong { color: var(--link); }
-
-        /* Demo image */
-        .demo-img {
-            width: 100%;
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            margin: 1rem 0 1.5rem;
-        }
-
-        /* TOC (right sidebar) */
-        .toc {
-            width: 220px;
-            min-width: 220px;
-            padding: 2rem 1.5rem;
-            position: sticky;
-            top: 52px;
-            height: calc(100vh - 52px);
-            overflow-y: auto;
-        }
-
-        .toc h4 {
-            color: var(--text-muted);
-            font-size: 0.72rem;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            margin-bottom: 0.8rem;
-        }
-
-        .toc a {
-            display: block;
-            color: var(--text-muted);
-            text-decoration: none;
-            padding: 0.2rem 0;
-            font-size: 0.8rem;
-            transition: color 0.2s;
-        }
-
-        .toc a:hover { color: var(--accent); }
-
-        /* Footer */
+        /* ===== Footer ===== */
         footer {
-            border-top: 1px solid var(--border);
-            padding: 2rem;
-            text-align: center;
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            margin-top: 3rem;
+            border-top: 1px solid var(--border); padding: 3rem 2rem; text-align: center;
+            color: var(--text-muted); font-size: 0.85rem;
         }
+        footer a { color: var(--text-secondary); text-decoration: none; }
+        footer a:hover { color: var(--accent); }
+        .footer-links { display: flex; justify-content: center; gap: 1.5rem; margin-bottom: 1rem; }
 
-        footer a { color: var(--text-secondary); }
-
-        /* Responsive */
-        @media (max-width: 1100px) {
-            .toc { display: none; }
-        }
-
+        /* ===== Responsive ===== */
         @media (max-width: 768px) {
-            .sidebar { display: none; }
-            main { padding: 1.5rem; }
-            header { padding: 0.8rem 1rem; }
-            nav a { margin-left: 1rem; font-size: 0.8rem; }
-            .providers { grid-template-columns: 1fr; }
-            h1 { font-size: 1.6rem; }
+            .hero h1 { font-size: 2rem; }
+            .counters { gap: 0.8rem; }
+            .counter-card { min-width: 130px; padding: 1rem; }
+            .counter-value { font-size: 1.6rem; }
+            .charts-grid { grid-template-columns: 1fr; }
+            .providers-grid { grid-template-columns: 1fr; }
+            .section { padding: 2rem 1rem; }
+            header { padding: 0 1rem; }
+            nav { display: none; }
+            .map-container { height: 350px; }
         }
+
+        /* ===== Smooth scroll ===== */
+        html { scroll-behavior: smooth; }
+
+        /* ===== Scrollbar ===== */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-primary); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
     </style>
 </head>
-<body>
+<body data-lang="en">
+
+<!-- Toast Container -->
+<div class="toast-container" id="toasts"></div>
+
+<!-- Search Modal -->
+<div class="search-overlay" id="searchOverlay" onclick="if(event.target===this)closeSearch()">
+    <div class="search-box">
+        <input type="text" class="search-input" id="searchInput" placeholder="Search functions... (Ctrl+K)" oninput="filterSearch(this.value)">
+        <div class="search-results" id="searchResults"></div>
+    </div>
+</div>
 
 <!-- Header -->
 <header>
@@ -456,366 +492,690 @@
         <div class="logo-text">DuckDB <span>Sudan</span></div>
     </a>
     <nav>
-        <a href="https://duckdb.org/docs/" target="_blank">DuckDB Documentation</a>
-        <a href="https://github.com/Osman-Geomatics93/duckdb-sudan-" target="_blank">GitHub</a>
-        <a href="functions.md" target="_blank">Function Reference</a>
+        <a href="#providers">Providers</a>
+        <a href="#dashboard">Dashboard</a>
+        <a href="#map">Map</a>
+        <a href="#playground">Playground</a>
+        <a href="#functions">Functions</a>
     </nav>
+    <div class="header-right">
+        <button class="header-btn" onclick="openSearch()" title="Ctrl+K">&#x1F50D; Search</button>
+        <button class="header-btn" onclick="toggleLang()" id="langBtn" title="Toggle Arabic/English">AR</button>
+        <button class="header-btn" onclick="toggleTheme()" id="themeBtn" title="Toggle theme">&#x263E;</button>
+        <a href="https://github.com/Osman-Geomatics93/duckdb-sudan-" target="_blank" class="header-btn">GitHub</a>
+    </div>
 </header>
 
-<!-- Layout -->
-<div class="layout">
+<!-- Hero -->
+<section class="hero">
+    <h1>
+        <span class="en-text">DuckDB Sudan Extension</span>
+        <span class="ar-text" style="font-family:var(--font-arabic)">إضافة DuckDB للسودان</span>
+    </h1>
+    <p class="subtitle">
+        <span class="en-text">Unified SQL access to Sudan's humanitarian, development, and geospatial data from 5 international APIs.</span>
+        <span class="ar-text" style="font-family:var(--font-arabic)">وصول موحد عبر SQL لبيانات السودان الإنسانية والتنموية والجغرافية من 5 واجهات برمجة دولية.</span>
+    </p>
 
-    <!-- Left Sidebar -->
-    <aside class="sidebar">
-        <h4>Getting Started</h4>
-        <a href="#overview" class="active">Overview</a>
-        <a href="#install">Installing &amp; Loading</a>
-        <a href="#example">Quick Example</a>
-        <h4>Data Providers</h4>
-        <a href="#providers">Provider List</a>
-        <a href="#worldbank">World Bank</a>
-        <a href="#who">WHO</a>
-        <a href="#fao">FAO</a>
-        <a href="#unhcr">UNHCR</a>
-        <a href="#ilo">ILO</a>
-        <h4>Geospatial</h4>
-        <a href="#boundaries">Boundaries</a>
-        <a href="#states">States</a>
-        <a href="#geocode">GeoCode</a>
-        <h4>Reference</h4>
-        <a href="#functions">All Functions</a>
-        <a href="#countries">Supported Countries</a>
-        <a href="#building">Building from Source</a>
-    </aside>
-
-    <!-- Main Content -->
-    <main>
-        <h1 id="overview">Sudan Extension <span class="version">v0.1.0</span></h1>
-        <p class="subtitle">Unified SQL access to Sudan's humanitarian, development, and geospatial data from 5 international APIs.</p>
-
-        <div class="badges">
-            <div class="badge badge-yellow">
-                <span class="badge-label">License</span>
-                <span class="badge-value">MIT</span>
-            </div>
-            <div class="badge badge-blue">
-                <span class="badge-label">DuckDB</span>
-                <span class="badge-value">v1.4.4+</span>
-            </div>
-            <div class="badge badge-green">
-                <span class="badge-label">Providers</span>
-                <span class="badge-value">5 APIs</span>
-            </div>
-            <div class="badge badge-purple">
-                <span class="badge-label">Functions</span>
-                <span class="badge-value">12 SQL</span>
+    <!-- Animated Counters -->
+    <div class="counters">
+        <div class="counter-card">
+            <div class="counter-value" data-target="50448963" data-format="pop">0</div>
+            <div class="counter-label">
+                <span class="en-text">Population (2024)</span>
+                <span class="ar-text" style="font-family:var(--font-arabic)">عدد السكان</span>
             </div>
         </div>
+        <div class="counter-card">
+            <div class="counter-value" data-target="2466231" data-format="num">0</div>
+            <div class="counter-label">
+                <span class="en-text">Refugees (2025)</span>
+                <span class="ar-text" style="font-family:var(--font-arabic)">لاجئون</span>
+            </div>
+        </div>
+        <div class="counter-card">
+            <div class="counter-value" data-target="18" data-format="raw">0</div>
+            <div class="counter-label">
+                <span class="en-text">States</span>
+                <span class="ar-text" style="font-family:var(--font-arabic)">ولاية</span>
+            </div>
+        </div>
+        <div class="counter-card">
+            <div class="counter-value" data-target="5" data-format="raw">0</div>
+            <div class="counter-label">
+                <span class="en-text">APIs</span>
+                <span class="ar-text" style="font-family:var(--font-arabic)">واجهات برمجة</span>
+            </div>
+        </div>
+        <div class="counter-card">
+            <div class="counter-value" data-target="12" data-format="raw">0</div>
+            <div class="counter-label">
+                <span class="en-text">SQL Functions</span>
+                <span class="ar-text" style="font-family:var(--font-arabic)">دوال SQL</span>
+            </div>
+        </div>
+    </div>
 
-        <p>Sudan is experiencing one of the world's largest humanitarian crises, yet its data is scattered across dozens of international APIs with incompatible formats. This extension brings <strong>all publicly available Sudan data into DuckDB</strong> — enabling analysts, researchers, and humanitarian workers to query demographics, economics, health, agriculture, displacement, and geospatial boundaries using standard SQL.</p>
-
-        <img src="demo.png" alt="DuckDB Sudan Extension Demo" class="demo-img">
-
-        <!-- Installing -->
-        <h2 id="install">Installing and Loading</h2>
-        <p>To install and load the <code>sudan</code> extension, run:</p>
-
-        <div class="code-block">
-            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-            <code><span class="kw">INSTALL</span> sudan <span class="kw">FROM</span> community;
+    <!-- Install -->
+    <div class="install-box">
+        <code><span class="kw">INSTALL</span> sudan <span class="kw">FROM</span> community;
 <span class="kw">LOAD</span> sudan;</code>
+        <button class="copy-btn" onclick="copyCode(this)" style="top:0.5rem;right:0.5rem">Copy</button>
+    </div>
+</section>
+
+<!-- Providers -->
+<section class="section" id="providers">
+    <div class="section-header">
+        <div class="divider"></div>
+        <h2>
+            <span class="en-text">Data Providers</span>
+            <span class="ar-text" style="font-family:var(--font-arabic)">مزودو البيانات</span>
+        </h2>
+        <p>
+            <span class="en-text">Live connections to 5 international APIs. Green dot = API reachable.</span>
+            <span class="ar-text" style="font-family:var(--font-arabic)">اتصالات مباشرة بـ 5 واجهات برمجة دولية. النقطة الخضراء = API متاح.</span>
+        </p>
+    </div>
+
+    <div class="providers-grid">
+        <div class="provider-card" data-url="https://api.worldbank.org/v2/country/SDN?format=json">
+            <h3><span class="status-dot checking" id="status-wb"></span> World Bank</h3>
+            <span class="arabic-name">البنك الدولي</span>
+            <p>Development indicators, GDP, population, education</p>
+            <code>SUDAN_WorldBank('SP.POP.TOTL')</code>
         </div>
-
-        <p>The <code>sudan</code> extension is now loaded and ready to use.</p>
-
-        <!-- Quick Example -->
-        <h2 id="example">Quick Example</h2>
-
-        <div class="code-block">
-            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-            <code><span class="cm">-- List all data providers</span>
-<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="fn">SUDAN_Providers</span>();
-
-<span class="cm">-- Sudan population from World Bank</span>
-<span class="kw">SELECT</span> year, value <span class="kw">FROM</span> <span class="fn">SUDAN_WorldBank</span>(<span class="str">'SP.POP.TOTL'</span>)
-<span class="kw">WHERE</span> year >= <span class="num">2020</span> <span class="kw">ORDER BY</span> year;
-
-<span class="cm">-- Sudan's 18 states with Arabic names</span>
-<span class="kw">SELECT</span> state_name, state_name_ar, iso_code <span class="kw">FROM</span> <span class="fn">SUDAN_States</span>();
-
-<span class="cm">-- Refugees from Sudan (2.4M+ in 2025)</span>
-<span class="kw">SELECT</span> year, value <span class="kw">FROM</span> <span class="fn">SUDAN_UNHCR</span>(<span class="str">'refugees'</span>)
-<span class="kw">WHERE</span> year >= <span class="num">2022</span> <span class="kw">ORDER BY</span> year <span class="kw">DESC</span>;</code>
+        <div class="provider-card" data-url="https://ghoapi.azureedge.net/api/WHOSIS_000001?$top=1">
+            <h3><span class="status-dot checking" id="status-who"></span> World Health Organization</h3>
+            <span class="arabic-name">منظمة الصحة العالمية</span>
+            <p>Health indicators, disease burden, mortality rates</p>
+            <code>SUDAN_WHO('MDG_0000000026')</code>
         </div>
+        <div class="provider-card" data-url="https://faostatservices.fao.org/api/v1/en/data/QCL?area=276&limit=1">
+            <h3><span class="status-dot checking" id="status-fao"></span> FAO</h3>
+            <span class="arabic-name">منظمة الأغذية والزراعة</span>
+            <p>Agricultural production, food security, land use</p>
+            <code>SUDAN_FAO('QCL', 'production')</code>
+        </div>
+        <div class="provider-card" data-url="https://api.unhcr.org/population/v1/population/?limit=1&coo=SDN&cf_type=iso">
+            <h3><span class="status-dot checking" id="status-unhcr"></span> UNHCR</h3>
+            <span class="arabic-name">المفوضية السامية</span>
+            <p>Refugees, IDPs, asylum seekers, displacement data</p>
+            <code>SUDAN_UNHCR('refugees')</code>
+        </div>
+        <div class="provider-card" data-url="https://sdmx.ilo.org/rest/data/ILO,DF_UNE_DEAP_SEX_AGE_RT/SDN.A...?format=jsondata&lastNObservations=1">
+            <h3><span class="status-dot checking" id="status-ilo"></span> ILO</h3>
+            <span class="arabic-name">منظمة العمل الدولية</span>
+            <p>Employment, labor force, unemployment statistics</p>
+            <code>SUDAN_ILO('UNE_DEAP_SEX_AGE_RT')</code>
+        </div>
+    </div>
+</section>
 
-        <!-- Providers -->
-        <h2 id="providers">Data Providers</h2>
-        <p>The extension connects to 5 international APIs, all accessible through simple SQL functions:</p>
+<!-- Dashboard -->
+<section class="section" id="dashboard">
+    <div class="section-header">
+        <div class="divider"></div>
+        <h2>
+            <span class="en-text">Live Data Dashboard</span>
+            <span class="ar-text" style="font-family:var(--font-arabic)">لوحة البيانات</span>
+        </h2>
+        <p>
+            <span class="en-text">Real data from Sudan's APIs, accessible through simple SQL queries.</span>
+            <span class="ar-text" style="font-family:var(--font-arabic)">بيانات حقيقية من واجهات برمجة السودان.</span>
+        </p>
+    </div>
 
-        <div class="providers">
-            <div class="provider-card" id="worldbank">
-                <h4>World Bank</h4>
-                <div class="arabic">البنك الدولي</div>
-                <p>Development indicators, GDP, population, education</p>
-                <code>SUDAN_WorldBank(indicator)</code>
+    <div class="charts-grid">
+        <div class="chart-card">
+            <h3>Sudan Population Growth (World Bank)</h3>
+            <canvas id="popChart" height="250"></canvas>
+        </div>
+        <div class="chart-card">
+            <h3>Sudanese Refugees Worldwide (UNHCR)</h3>
+            <canvas id="refugeeChart" height="250"></canvas>
+        </div>
+        <div class="chart-card">
+            <h3>Maternal Mortality Ratio (WHO)</h3>
+            <canvas id="mortalityChart" height="250"></canvas>
+        </div>
+        <div class="chart-card">
+            <h3>Regional Population Comparison 2024</h3>
+            <canvas id="compareChart" height="250"></canvas>
+        </div>
+    </div>
+</section>
+
+<!-- Map -->
+<section class="section" id="map">
+    <div class="section-header">
+        <div class="divider"></div>
+        <h2>
+            <span class="en-text">Interactive Map — Sudan's 18 States</span>
+            <span class="ar-text" style="font-family:var(--font-arabic)">خريطة تفاعلية — 18 ولاية سودانية</span>
+        </h2>
+        <p>
+            <span class="en-text">Embedded GeoJSON boundaries with bilingual names. Click a state for details.</span>
+            <span class="ar-text" style="font-family:var(--font-arabic)">حدود GeoJSON مدمجة بأسماء ثنائية اللغة. انقر على ولاية للتفاصيل.</span>
+        </p>
+    </div>
+    <div class="map-container">
+        <div id="sudan-map"></div>
+    </div>
+</section>
+
+<!-- SQL Playground -->
+<section class="section" id="playground">
+    <div class="section-header">
+        <div class="divider"></div>
+        <h2>
+            <span class="en-text">SQL Playground</span>
+            <span class="ar-text" style="font-family:var(--font-arabic)">ساحة SQL التجريبية</span>
+        </h2>
+        <p>
+            <span class="en-text">Try example queries. Install the extension locally to run your own.</span>
+            <span class="ar-text" style="font-family:var(--font-arabic)">جرب استعلامات المثال. ثبت الإضافة محلياً لتشغيل استعلاماتك.</span>
+        </p>
+    </div>
+
+    <div class="playground">
+        <div class="playground-header">
+            <span>DuckDB SQL</span>
+            <div style="display:flex;gap:0.5rem;align-items:center">
+                <div class="playground-tabs">
+                    <button class="playground-tab active" onclick="loadQuery(0,this)">Providers</button>
+                    <button class="playground-tab" onclick="loadQuery(1,this)">Population</button>
+                    <button class="playground-tab" onclick="loadQuery(2,this)">Refugees</button>
+                    <button class="playground-tab" onclick="loadQuery(3,this)">States</button>
+                </div>
+                <button class="run-btn" onclick="runQuery()">&#9654; Run</button>
             </div>
-            <div class="provider-card" id="who">
-                <h4>World Health Organization</h4>
-                <div class="arabic">منظمة الصحة العالمية</div>
-                <p>Health indicators, disease burden, mortality rates</p>
-                <code>SUDAN_WHO(indicator)</code>
-            </div>
-            <div class="provider-card" id="fao">
-                <h4>Food &amp; Agriculture Organization</h4>
-                <div class="arabic">منظمة الأغذية والزراعة</div>
-                <p>Agricultural production, food security, land use</p>
-                <code>SUDAN_FAO(dataset, element)</code>
-            </div>
-            <div class="provider-card" id="unhcr">
-                <h4>UNHCR</h4>
-                <div class="arabic">المفوضية السامية</div>
-                <p>Refugees, IDPs, asylum seekers, displacement data</p>
-                <code>SUDAN_UNHCR(population_type)</code>
-            </div>
-            <div class="provider-card" id="ilo">
-                <h4>International Labour Organization</h4>
-                <div class="arabic">منظمة العمل الدولية</div>
-                <p>Employment, labor force, unemployment statistics</p>
-                <code>SUDAN_ILO(indicator)</code>
-            </div>
         </div>
+        <div class="playground-editor" id="pgEditor"></div>
+        <div class="playground-result" id="pgResult"><span style="color:var(--text-muted)">Click "Run" to execute the query.</span></div>
+    </div>
+</section>
 
-        <!-- World Bank Examples -->
-        <h3>World Bank — Population &amp; Demographics</h3>
-        <div class="code-block">
-            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-            <code><span class="cm">-- Compare Sudan with neighbors</span>
-<span class="kw">SELECT</span> country_name, year, value
-<span class="kw">FROM</span> <span class="fn">SUDAN_WorldBank</span>(<span class="str">'SP.POP.TOTL'</span>, countries := [<span class="str">'SDN'</span>, <span class="str">'EGY'</span>, <span class="str">'ETH'</span>, <span class="str">'SSD'</span>])
-<span class="kw">WHERE</span> year = <span class="num">2024</span>
-<span class="kw">ORDER BY</span> value <span class="kw">DESC</span>;
+<!-- Functions Reference -->
+<section class="section" id="functions">
+    <div class="section-header">
+        <div class="divider"></div>
+        <h2>
+            <span class="en-text">All SQL Functions</span>
+            <span class="ar-text" style="font-family:var(--font-arabic)">جميع دوال SQL</span>
+        </h2>
+    </div>
 
-<span class="cm">-- Search for indicators</span>
-<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="fn">SUDAN_WB_Indicators</span>(search := <span class="str">'GDP'</span>);</code>
+    <h3>Discovery & Metadata</h3>
+    <table class="fn-table">
+        <thead><tr><th>Function</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+            <tr><td><code>SUDAN_Providers()</code></td><td><span class="fn-tag table">table</span></td><td>List all 5 data providers with Arabic names and URLs</td></tr>
+            <tr><td><code>SUDAN_WB_Indicators(search)</code></td><td><span class="fn-tag table">table</span></td><td>Search World Bank indicators by keyword</td></tr>
+            <tr><td><code>SUDAN_WHO_Indicators(search)</code></td><td><span class="fn-tag table">table</span></td><td>Search WHO GHO indicators by keyword</td></tr>
+            <tr><td><code>SUDAN_Search(query)</code></td><td><span class="fn-tag table">table</span></td><td>Cross-provider indicator search</td></tr>
+        </tbody>
+    </table>
+
+    <h3>Data Functions</h3>
+    <table class="fn-table">
+        <thead><tr><th>Function</th><th>Signature</th><th>Source</th></tr></thead>
+        <tbody>
+            <tr><td><code>SUDAN_WorldBank</code></td><td><code>(indicator, countries := ['SDN'])</code></td><td>World Bank V2 API</td></tr>
+            <tr><td><code>SUDAN_WHO</code></td><td><code>(indicator, countries := ['SDN'])</code></td><td>WHO GHO OData API</td></tr>
+            <tr><td><code>SUDAN_FAO</code></td><td><code>(dataset, element, countries := ['SDN'])</code></td><td>FAOSTAT API</td></tr>
+            <tr><td><code>SUDAN_UNHCR</code></td><td><code>(population_type, countries := ['SDN'])</code></td><td>UNHCR Population API</td></tr>
+            <tr><td><code>SUDAN_ILO</code></td><td><code>(indicator, countries := ['SDN'])</code></td><td>ILO SDMX API</td></tr>
+        </tbody>
+    </table>
+
+    <h3>Geospatial Functions</h3>
+    <table class="fn-table">
+        <thead><tr><th>Function</th><th>Type</th><th>Description</th></tr></thead>
+        <tbody>
+            <tr><td><code>SUDAN_Boundaries(level)</code></td><td><span class="fn-tag table">table</span></td><td>Admin boundaries as GeoJSON ('country', 'state', 'locality')</td></tr>
+            <tr><td><code>SUDAN_States()</code></td><td><span class="fn-tag table">table</span></td><td>18 states with bilingual names, ISO codes, centroids</td></tr>
+            <tr><td><code>SUDAN_GeoCode(name)</code></td><td><span class="fn-tag scalar">scalar</span></td><td>State name (Arabic or English) &rarr; ISO code</td></tr>
+        </tbody>
+    </table>
+</section>
+
+<!-- Countries -->
+<section class="section" id="countries">
+    <div class="section-header">
+        <div class="divider"></div>
+        <h2>
+            <span class="en-text">Supported Countries</span>
+            <span class="ar-text" style="font-family:var(--font-arabic)">الدول المدعومة</span>
+        </h2>
+        <p>
+            <span class="en-text">All functions default to Sudan. Use the <code>countries</code> parameter for regional comparison.</span>
+            <span class="ar-text" style="font-family:var(--font-arabic)">جميع الدوال تعمل افتراضياً للسودان. استخدم معامل <code>countries</code> للمقارنة الإقليمية.</span>
+        </p>
+    </div>
+    <div class="countries-grid">
+        <div class="country-item"><span class="iso">SDN</span><span>Sudan</span><span class="ar">السودان</span></div>
+        <div class="country-item"><span class="iso">EGY</span><span>Egypt</span><span class="ar">مصر</span></div>
+        <div class="country-item"><span class="iso">ETH</span><span>Ethiopia</span><span class="ar">إثيوبيا</span></div>
+        <div class="country-item"><span class="iso">TCD</span><span>Chad</span><span class="ar">تشاد</span></div>
+        <div class="country-item"><span class="iso">SSD</span><span>South Sudan</span><span class="ar">جنوب السودان</span></div>
+        <div class="country-item"><span class="iso">ERI</span><span>Eritrea</span><span class="ar">إريتريا</span></div>
+        <div class="country-item"><span class="iso">LBY</span><span>Libya</span><span class="ar">ليبيا</span></div>
+        <div class="country-item"><span class="iso">CAF</span><span>Central African Rep.</span><span class="ar">أفريقيا الوسطى</span></div>
+    </div>
+</section>
+
+<!-- Changelog -->
+<section class="section" id="changelog">
+    <div class="section-header">
+        <div class="divider"></div>
+        <h2>
+            <span class="en-text">Changelog</span>
+            <span class="ar-text" style="font-family:var(--font-arabic)">سجل التغييرات</span>
+        </h2>
+    </div>
+    <div class="timeline">
+        <div class="timeline-item">
+            <h4>v0.1.0 — Initial Release</h4>
+            <div class="date">February 2026</div>
+            <ul>
+                <li>12 SQL functions across 5 international APIs</li>
+                <li>World Bank, WHO, FAO, UNHCR, ILO data providers</li>
+                <li>Embedded GeoJSON boundaries for 18 Sudan states</li>
+                <li>Bilingual support (Arabic/English)</li>
+                <li>Regional comparison with 8 neighboring countries</li>
+                <li>In-memory response caching</li>
+                <li>9 test cases with 47 assertions</li>
+            </ul>
         </div>
-
-        <!-- WHO Examples -->
-        <h3>WHO — Health Data</h3>
-        <div class="code-block">
-            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-            <code><span class="cm">-- Maternal mortality ratio</span>
-<span class="kw">SELECT</span> year, value <span class="kw">FROM</span> <span class="fn">SUDAN_WHO</span>(<span class="str">'MDG_0000000026'</span>)
-<span class="kw">ORDER BY</span> year;
-
-<span class="cm">-- Find health indicators</span>
-<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="fn">SUDAN_WHO_Indicators</span>(search := <span class="str">'mortality'</span>);</code>
+        <div class="timeline-item">
+            <h4>Roadmap</h4>
+            <div class="date">Upcoming</div>
+            <ul>
+                <li>DuckDB Community Extensions listing</li>
+                <li>Locality-level boundaries (admin-2)</li>
+                <li>Filter pushdown for year ranges</li>
+                <li>Additional data providers (OCHA, HDX)</li>
+            </ul>
         </div>
+    </div>
+</section>
 
-        <!-- UNHCR Examples -->
-        <h3>UNHCR — Displacement &amp; Refugees</h3>
-        <div class="code-block">
-            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-            <code><span class="cm">-- Sudanese refugees worldwide</span>
-<span class="kw">SELECT</span> year, country_asylum_name, value
-<span class="kw">FROM</span> <span class="fn">SUDAN_UNHCR</span>(<span class="str">'refugees'</span>)
-<span class="kw">WHERE</span> year >= <span class="num">2022</span>
-<span class="kw">ORDER BY</span> year <span class="kw">DESC</span>, value <span class="kw">DESC</span>;
+<!-- Building -->
+<section class="section" id="building">
+    <div class="section-header">
+        <div class="divider"></div>
+        <h2>
+            <span class="en-text">Building from Source</span>
+            <span class="ar-text" style="font-family:var(--font-arabic)">البناء من المصدر</span>
+        </h2>
+    </div>
 
-<span class="cm">-- Internally displaced persons</span>
-<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="fn">SUDAN_UNHCR</span>(<span class="str">'idps'</span>);</code>
-        </div>
-
-        <!-- FAO Examples -->
-        <h3>FAO — Agriculture &amp; Food Security</h3>
-        <div class="code-block">
-            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-            <code><span class="cm">-- Crop production in Sudan</span>
-<span class="kw">SELECT</span> item, year, value, unit
-<span class="kw">FROM</span> <span class="fn">SUDAN_FAO</span>(<span class="str">'QCL'</span>, <span class="str">'production'</span>)
-<span class="kw">WHERE</span> year >= <span class="num">2020</span>
-<span class="kw">ORDER BY</span> item, year <span class="kw">DESC</span>;</code>
-        </div>
-
-        <!-- ILO Examples -->
-        <h3>ILO — Labor &amp; Employment</h3>
-        <div class="code-block">
-            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-            <code><span class="cm">-- Unemployment rate by sex and age</span>
-<span class="kw">SELECT</span> sex, classif1, year, value
-<span class="kw">FROM</span> <span class="fn">SUDAN_ILO</span>(<span class="str">'UNE_DEAP_SEX_AGE_RT'</span>)
-<span class="kw">WHERE</span> year = <span class="num">2022</span>
-<span class="kw">ORDER BY</span> sex, classif1;</code>
-        </div>
-
-        <!-- Geospatial -->
-        <h2 id="boundaries">Geospatial Functions</h2>
-        <p>The extension includes embedded geographic data for Sudan's 18 states with bilingual (Arabic/English) names.</p>
-
-        <h3 id="states">SUDAN_States()</h3>
-        <p>Returns all 18 Sudan states with bilingual names, ISO codes, centroids, and GeoJSON geometry.</p>
-        <div class="code-block">
-            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-            <code><span class="kw">SELECT</span> state_name, state_name_ar, iso_code <span class="kw">FROM</span> <span class="fn">SUDAN_States</span>();
-
-<span class="cm">-- Use with DuckDB's spatial extension</span>
-<span class="kw">SELECT</span> state_name, <span class="fn">ST_GeomFromGeoJSON</span>(geojson) <span class="kw">AS</span> geom
-<span class="kw">FROM</span> <span class="fn">SUDAN_States</span>();</code>
-        </div>
-
-        <h3 id="geocode">SUDAN_GeoCode(name)</h3>
-        <p>Scalar function that converts a state name (Arabic or English) to its ISO 3166-2 code.</p>
-        <div class="code-block">
-            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-            <code><span class="kw">SELECT</span> <span class="fn">SUDAN_GeoCode</span>(<span class="str">'Khartoum'</span>);    <span class="cm">-- returns 'SD-KH'</span>
-<span class="kw">SELECT</span> <span class="fn">SUDAN_GeoCode</span>(<span class="str">'الخرطوم'</span>);     <span class="cm">-- returns 'SD-KH'</span></code>
-        </div>
-
-        <!-- All Functions -->
-        <h2 id="functions">All SQL Functions</h2>
-
-        <h3>Discovery &amp; Metadata</h3>
-        <table>
-            <thead>
-                <tr><th>Function</th><th>Type</th><th>Description</th></tr>
-            </thead>
-            <tbody>
-                <tr><td><code>SUDAN_Providers()</code></td><td>Table</td><td>List all 5 data providers with Arabic names and URLs</td></tr>
-                <tr><td><code>SUDAN_WB_Indicators(search)</code></td><td>Table</td><td>Search World Bank indicators by keyword</td></tr>
-                <tr><td><code>SUDAN_WHO_Indicators(search)</code></td><td>Table</td><td>Search WHO GHO indicators by keyword</td></tr>
-                <tr><td><code>SUDAN_Search(query)</code></td><td>Table</td><td>Cross-provider indicator search</td></tr>
-            </tbody>
-        </table>
-
-        <h3>Data Functions</h3>
-        <table>
-            <thead>
-                <tr><th>Function</th><th>Signature</th><th>Source</th></tr>
-            </thead>
-            <tbody>
-                <tr><td><code>SUDAN_WorldBank</code></td><td><code>(indicator, countries := ['SDN'])</code></td><td>World Bank V2 API</td></tr>
-                <tr><td><code>SUDAN_WHO</code></td><td><code>(indicator, countries := ['SDN'])</code></td><td>WHO GHO OData API</td></tr>
-                <tr><td><code>SUDAN_FAO</code></td><td><code>(dataset, element, countries := ['SDN'])</code></td><td>FAOSTAT API</td></tr>
-                <tr><td><code>SUDAN_UNHCR</code></td><td><code>(population_type, countries := ['SDN'])</code></td><td>UNHCR Population API</td></tr>
-                <tr><td><code>SUDAN_ILO</code></td><td><code>(indicator, countries := ['SDN'])</code></td><td>ILO SDMX API</td></tr>
-            </tbody>
-        </table>
-
-        <h3>Geospatial Functions</h3>
-        <table>
-            <thead>
-                <tr><th>Function</th><th>Type</th><th>Description</th></tr>
-            </thead>
-            <tbody>
-                <tr><td><code>SUDAN_Boundaries(level)</code></td><td>Table</td><td>Admin boundaries as GeoJSON (<code>'country'</code>, <code>'state'</code>, <code>'locality'</code>)</td></tr>
-                <tr><td><code>SUDAN_States()</code></td><td>Table</td><td>18 states with bilingual names, ISO codes, centroids</td></tr>
-                <tr><td><code>SUDAN_GeoCode(name)</code></td><td>Scalar</td><td>State name (Arabic or English) → ISO code</td></tr>
-            </tbody>
-        </table>
-
-        <!-- Countries -->
-        <h2 id="countries">Supported Countries</h2>
-        <p>All data functions default to Sudan but support neighboring countries for regional comparison via the <code>countries</code> parameter.</p>
-
-        <div class="countries-grid">
-            <div class="country-item"><span class="iso">SDN</span><span class="name">Sudan</span><span class="ar">السودان</span></div>
-            <div class="country-item"><span class="iso">EGY</span><span class="name">Egypt</span><span class="ar">مصر</span></div>
-            <div class="country-item"><span class="iso">ETH</span><span class="name">Ethiopia</span><span class="ar">إثيوبيا</span></div>
-            <div class="country-item"><span class="iso">TCD</span><span class="name">Chad</span><span class="ar">تشاد</span></div>
-            <div class="country-item"><span class="iso">SSD</span><span class="name">South Sudan</span><span class="ar">جنوب السودان</span></div>
-            <div class="country-item"><span class="iso">ERI</span><span class="name">Eritrea</span><span class="ar">إريتريا</span></div>
-            <div class="country-item"><span class="iso">LBY</span><span class="name">Libya</span><span class="ar">ليبيا</span></div>
-            <div class="country-item"><span class="iso">CAF</span><span class="name">Central African Rep.</span><span class="ar">أفريقيا الوسطى</span></div>
-        </div>
-
-        <div class="code-block">
-            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-            <code><span class="cm">-- Compare across neighbors</span>
-<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="fn">SUDAN_WorldBank</span>(<span class="str">'SP.POP.TOTL'</span>, countries := [<span class="str">'SDN'</span>, <span class="str">'EGY'</span>, <span class="str">'ETH'</span>]);
-<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="fn">SUDAN_UNHCR</span>(<span class="str">'refugees'</span>, countries := [<span class="str">'SDN'</span>, <span class="str">'SSD'</span>]);
-<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="fn">SUDAN_FAO</span>(<span class="str">'QCL'</span>, <span class="str">'production'</span>, countries := [<span class="str">'SDN'</span>, <span class="str">'EGY'</span>]);</code>
-        </div>
-
-        <!-- Building -->
-        <h2 id="building">Building from Source</h2>
-
-        <div class="info-box">
-            <strong>Prerequisites:</strong> CMake 3.10+, C++17 compiler (MSVC 2019+, GCC 9+, Clang 10+), OpenSSL, Ninja
-        </div>
-
-        <h3>Windows</h3>
-        <div class="code-block">
-            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-            <code>git clone --recurse-submodules https://github.com/Osman-Geomatics93/duckdb-sudan-.git
+    <h3>Windows</h3>
+    <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <code>git clone --recurse-submodules https://github.com/Osman-Geomatics93/duckdb-sudan-.git
 cd duckdb-sudan-
 build_release.bat
 build\release\duckdb.exe -unsigned</code>
-        </div>
+    </div>
 
-        <h3>Linux / macOS</h3>
-        <div class="code-block">
-            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-            <code>git clone --recurse-submodules https://github.com/Osman-Geomatics93/duckdb-sudan-.git
+    <h3>Linux / macOS</h3>
+    <div class="code-block">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <code>git clone --recurse-submodules https://github.com/Osman-Geomatics93/duckdb-sudan-.git
 cd duckdb-sudan-
 GEN=ninja make release
 ./build/release/duckdb -unsigned</code>
-        </div>
-
-        <h3>Testing</h3>
-        <div class="code-block">
-            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-            <code><span class="cm"># Run all 9 test cases (47 assertions)</span>
-./build/release/test/unittest "*sudan*"</code>
-        </div>
-
-    </main>
-
-    <!-- Right TOC -->
-    <aside class="toc">
-        <h4>In This Article</h4>
-        <a href="#install">Installing &amp; Loading</a>
-        <a href="#example">Quick Example</a>
-        <a href="#providers">Data Providers</a>
-        <a href="#boundaries">Geospatial Functions</a>
-        <a href="#functions">All Functions</a>
-        <a href="#countries">Supported Countries</a>
-        <a href="#building">Building from Source</a>
-    </aside>
-
-</div>
+    </div>
+</section>
 
 <!-- Footer -->
 <footer>
-    <p>Built on <a href="https://duckdb.org" target="_blank">DuckDB</a> · Inspired by <a href="https://github.com/ahuarte47/duckdb-eurostat" target="_blank">duckdb-eurostat</a> · Data from <a href="https://data.worldbank.org/" target="_blank">World Bank</a>, <a href="https://www.who.int/data/gho" target="_blank">WHO</a>, <a href="https://www.fao.org/faostat/" target="_blank">FAO</a>, <a href="https://www.unhcr.org/refugee-statistics/" target="_blank">UNHCR</a>, <a href="https://ilostat.ilo.org/" target="_blank">ILO</a></p>
-    <p style="margin-top: 0.5rem;">© 2025 <a href="https://github.com/Osman-Geomatics93" target="_blank">Osman-Geomatics93</a> · MIT License</p>
+    <div class="footer-links">
+        <a href="https://github.com/Osman-Geomatics93/duckdb-sudan-">GitHub</a>
+        <a href="https://duckdb.org">DuckDB</a>
+        <a href="functions.md">Function Reference</a>
+        <a href="https://github.com/Osman-Geomatics93/duckdb-sudan-/issues">Issues</a>
+    </div>
+    <p>Built on <a href="https://duckdb.org">DuckDB</a> &middot; Data from <a href="https://data.worldbank.org/">World Bank</a>, <a href="https://www.who.int/data/gho">WHO</a>, <a href="https://www.fao.org/faostat/">FAO</a>, <a href="https://www.unhcr.org/refugee-statistics/">UNHCR</a>, <a href="https://ilostat.ilo.org/">ILO</a></p>
+    <p style="margin-top:0.5rem">&copy; 2025 <a href="https://github.com/Osman-Geomatics93">Osman-Geomatics93</a> &middot; MIT License</p>
 </footer>
 
+<!-- Libraries -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
 <script>
+// ===== Toast Notifications =====
+function showToast(msg) {
+    const c = document.getElementById('toasts');
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.innerHTML = '&#10003; ' + msg;
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 2500);
+}
+
+// ===== Copy to Clipboard =====
 function copyCode(btn) {
     const code = btn.parentElement.querySelector('code');
-    const text = code.innerText;
-    navigator.clipboard.writeText(text).then(() => {
-        btn.textContent = 'Copied!';
-        setTimeout(() => btn.textContent = 'Copy', 2000);
+    navigator.clipboard.writeText(code.innerText).then(() => showToast('Copied to clipboard!'));
+}
+
+// ===== Theme Toggle =====
+function toggleTheme() {
+    const html = document.documentElement;
+    const curr = html.getAttribute('data-theme');
+    const next = curr === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-theme', next);
+    document.getElementById('themeBtn').innerHTML = next === 'dark' ? '&#x263E;' : '&#x2600;';
+    localStorage.setItem('theme', next);
+    updateCharts();
+}
+
+// ===== Language Toggle =====
+function toggleLang() {
+    const body = document.body;
+    const curr = body.getAttribute('data-lang');
+    const next = curr === 'en' ? 'ar' : 'en';
+    body.setAttribute('data-lang', next);
+    document.getElementById('langBtn').textContent = next === 'en' ? 'AR' : 'EN';
+    localStorage.setItem('lang', next);
+}
+
+// Init saved prefs
+if (localStorage.getItem('theme')) document.documentElement.setAttribute('data-theme', localStorage.getItem('theme'));
+if (localStorage.getItem('lang')) { document.body.setAttribute('data-lang', localStorage.getItem('lang')); document.getElementById('langBtn').textContent = localStorage.getItem('lang') === 'en' ? 'AR' : 'EN'; }
+
+// ===== Search =====
+const allFunctions = [
+    { name: 'SUDAN_Providers()', desc: 'List all 5 data providers', tag: 'info' },
+    { name: 'SUDAN_WB_Indicators(search)', desc: 'Search World Bank indicators', tag: 'search' },
+    { name: 'SUDAN_WHO_Indicators(search)', desc: 'Search WHO GHO indicators', tag: 'search' },
+    { name: 'SUDAN_Search(query)', desc: 'Cross-provider indicator search', tag: 'search' },
+    { name: 'SUDAN_WorldBank(indicator)', desc: 'World Bank development data', tag: 'data' },
+    { name: 'SUDAN_WHO(indicator)', desc: 'WHO health indicators', tag: 'data' },
+    { name: 'SUDAN_FAO(dataset, element)', desc: 'FAO agricultural statistics', tag: 'data' },
+    { name: 'SUDAN_UNHCR(population_type)', desc: 'UNHCR displacement data', tag: 'data' },
+    { name: 'SUDAN_ILO(indicator)', desc: 'ILO labor statistics', tag: 'data' },
+    { name: 'SUDAN_Boundaries(level)', desc: 'Admin boundaries as GeoJSON', tag: 'geo' },
+    { name: 'SUDAN_States()', desc: '18 states with bilingual names', tag: 'geo' },
+    { name: 'SUDAN_GeoCode(name)', desc: 'State name to ISO code', tag: 'geo' },
+];
+
+function openSearch() {
+    document.getElementById('searchOverlay').classList.add('active');
+    document.getElementById('searchInput').focus();
+    filterSearch('');
+}
+function closeSearch() { document.getElementById('searchOverlay').classList.remove('active'); }
+
+function filterSearch(q) {
+    const results = document.getElementById('searchResults');
+    const filtered = q ? allFunctions.filter(f => (f.name + f.desc).toLowerCase().includes(q.toLowerCase())) : allFunctions;
+    if (filtered.length === 0) {
+        results.innerHTML = '<div class="search-empty">No functions found.</div>';
+        return;
+    }
+    results.innerHTML = filtered.map(f => `
+        <div class="search-item" onclick="closeSearch()">
+            <div><div class="fn-name">${f.name}</div><div class="fn-desc">${f.desc}</div></div>
+            <span class="fn-tag">${f.tag}</span>
+        </div>
+    `).join('');
+}
+
+document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openSearch(); }
+    if (e.key === 'Escape') closeSearch();
+});
+
+// ===== Animated Counters =====
+function formatNum(n, fmt) {
+    if (fmt === 'pop') return (n / 1e6).toFixed(1) + 'M';
+    if (fmt === 'num') return (n / 1e6).toFixed(1) + 'M';
+    return n.toString();
+}
+
+const counterObserver = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            const counters = entry.target.querySelectorAll('.counter-value');
+            counters.forEach(el => {
+                const target = parseInt(el.dataset.target);
+                const fmt = el.dataset.format;
+                const duration = 2000;
+                const start = performance.now();
+                function tick(now) {
+                    const progress = Math.min((now - start) / duration, 1);
+                    const eased = 1 - Math.pow(1 - progress, 3);
+                    const current = Math.floor(eased * target);
+                    el.textContent = formatNum(current, fmt);
+                    if (progress < 1) requestAnimationFrame(tick);
+                    else el.textContent = formatNum(target, fmt);
+                }
+                requestAnimationFrame(tick);
+            });
+            counterObserver.unobserve(entry.target);
+        }
+    });
+}, { threshold: 0.3 });
+counterObserver.observe(document.querySelector('.counters'));
+
+// ===== Provider Status Checks =====
+async function checkProviders() {
+    const checks = [
+        { id: 'status-wb', url: 'https://api.worldbank.org/v2/country/SDN?format=json' },
+        { id: 'status-who', url: 'https://ghoapi.azureedge.net/api/WHOSIS_000001?$top=1' },
+        { id: 'status-fao', url: 'https://faostatservices.fao.org/api/v1/en/data/QCL?area=276&limit=1' },
+        { id: 'status-unhcr', url: 'https://api.unhcr.org/population/v1/population/?limit=1&coo=SDN&cf_type=iso' },
+        { id: 'status-ilo', url: 'https://sdmx.ilo.org/rest/dataflow/ILO?format=jsondata' },
+    ];
+    for (const c of checks) {
+        const dot = document.getElementById(c.id);
+        try {
+            const r = await fetch(c.url, { mode: 'no-cors', signal: AbortSignal.timeout(8000) });
+            dot.className = 'status-dot online';
+        } catch {
+            dot.className = 'status-dot offline';
+        }
+    }
+}
+checkProviders();
+
+// ===== Charts =====
+let charts = {};
+function getChartColors() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    return {
+        grid: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+        text: isDark ? '#94a3b8' : '#64748b',
+        accent: '#fbbf24',
+        blue: '#60a5fa',
+        red: '#f87171',
+        green: '#34d399',
+        purple: '#a78bfa',
+        orange: '#fb923c',
+    };
+}
+
+function createCharts() {
+    const c = getChartColors();
+    const defaults = { responsive: true, plugins: { legend: { labels: { color: c.text, font: { family: 'Inter' } } } }, scales: { x: { ticks: { color: c.text }, grid: { color: c.grid } }, y: { ticks: { color: c.text }, grid: { color: c.grid } } } };
+
+    charts.pop = new Chart(document.getElementById('popChart'), {
+        type: 'line',
+        data: {
+            labels: ['2015','2016','2017','2018','2019','2020','2021','2022','2023','2024'],
+            datasets: [{
+                label: 'Population (millions)',
+                data: [38.65, 39.62, 40.53, 41.49, 44.44, 46.79, 48.07, 49.38, 50.04, 50.45],
+                borderColor: c.accent, backgroundColor: c.accent + '20',
+                fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: c.accent,
+            }]
+        },
+        options: { ...defaults, plugins: { ...defaults.plugins, legend: { display: false } } }
+    });
+
+    charts.refugee = new Chart(document.getElementById('refugeeChart'), {
+        type: 'bar',
+        data: {
+            labels: ['2019','2020','2021','2022','2023','2024','2025'],
+            datasets: [{
+                label: 'Refugees from Sudan',
+                data: [725571, 805124, 818580, 837188, 1496923, 2094373, 2466231],
+                backgroundColor: [c.blue+'90',c.blue+'90',c.blue+'90',c.blue+'90',c.orange+'90',c.red+'90',c.red],
+                borderRadius: 6,
+            }]
+        },
+        options: { ...defaults, plugins: { ...defaults.plugins, legend: { display: false } } }
+    });
+
+    charts.mortality = new Chart(document.getElementById('mortalityChart'), {
+        type: 'line',
+        data: {
+            labels: ['2000','2003','2006','2009','2012','2015','2017','2019','2021'],
+            datasets: [{
+                label: 'Maternal Mortality Ratio (per 100k)',
+                data: [638, 567, 507, 454, 408, 370, 348, 325, 305],
+                borderColor: c.green, backgroundColor: c.green + '15',
+                fill: true, tension: 0.4, pointRadius: 4, pointBackgroundColor: c.green,
+            }]
+        },
+        options: { ...defaults, plugins: { ...defaults.plugins, legend: { display: false } } }
+    });
+
+    charts.compare = new Chart(document.getElementById('compareChart'), {
+        type: 'bar',
+        data: {
+            labels: ['Ethiopia','Egypt','Sudan','South Sudan','Chad','Eritrea','Libya','CAF'],
+            datasets: [{
+                label: 'Population 2024 (millions)',
+                data: [125.1, 112.7, 50.4, 11.1, 18.3, 3.7, 6.9, 5.7],
+                backgroundColor: [c.blue, c.green, c.accent, c.purple, c.orange, c.red, '#94a3b8', '#64748b'],
+                borderRadius: 6,
+            }]
+        },
+        options: {
+            ...defaults, indexAxis: 'y',
+            plugins: { ...defaults.plugins, legend: { display: false } },
+        }
     });
 }
 
-// Active sidebar link on scroll
-const sections = document.querySelectorAll('h2[id], h3[id]');
-const sidebarLinks = document.querySelectorAll('.sidebar a');
+function updateCharts() {
+    Object.values(charts).forEach(ch => ch.destroy());
+    createCharts();
+}
+createCharts();
 
-window.addEventListener('scroll', () => {
-    let current = '';
-    sections.forEach(section => {
-        const top = section.offsetTop - 80;
-        if (pageYOffset >= top) current = section.getAttribute('id');
-    });
-    sidebarLinks.forEach(link => {
-        link.classList.remove('active');
-        if (link.getAttribute('href') === '#' + current) {
-            link.classList.add('active');
-        }
-    });
+// ===== Leaflet Map =====
+const states = [
+    { name: 'Khartoum', ar: 'الخرطوم', iso: 'SD-KH', lat: 15.55, lon: 32.53 },
+    { name: 'Al Jazirah', ar: 'الجزيرة', iso: 'SD-GZ', lat: 14.88, lon: 33.53 },
+    { name: 'Al Qadarif', ar: 'القضارف', iso: 'SD-GD', lat: 14.03, lon: 35.40 },
+    { name: 'Kassala', ar: 'كسلا', iso: 'SD-KA', lat: 15.45, lon: 36.40 },
+    { name: 'Red Sea', ar: 'البحر الأحمر', iso: 'SD-RS', lat: 19.62, lon: 37.22 },
+    { name: 'River Nile', ar: 'نهر النيل', iso: 'SD-NR', lat: 17.50, lon: 33.93 },
+    { name: 'Northern', ar: 'الشمالية', iso: 'SD-NO', lat: 19.50, lon: 30.22 },
+    { name: 'White Nile', ar: 'النيل الأبيض', iso: 'SD-NW', lat: 13.17, lon: 32.17 },
+    { name: 'Blue Nile', ar: 'النيل الأزرق', iso: 'SD-NB', lat: 11.25, lon: 34.38 },
+    { name: 'Sennar', ar: 'سنار', iso: 'SD-SI', lat: 13.55, lon: 33.57 },
+    { name: 'South Darfur', ar: 'جنوب دارفور', iso: 'SD-DS', lat: 11.75, lon: 24.92 },
+    { name: 'North Darfur', ar: 'شمال دارفور', iso: 'SD-DN', lat: 15.77, lon: 24.90 },
+    { name: 'West Darfur', ar: 'غرب دارفور', iso: 'SD-DW', lat: 12.85, lon: 23.00 },
+    { name: 'Central Darfur', ar: 'وسط دارفور', iso: 'SD-DC', lat: 12.67, lon: 24.27 },
+    { name: 'East Darfur', ar: 'شرق دارفور', iso: 'SD-DE', lat: 12.12, lon: 26.15 },
+    { name: 'North Kordofan', ar: 'شمال كردفان', iso: 'SD-KN', lat: 13.83, lon: 29.42 },
+    { name: 'South Kordofan', ar: 'جنوب كردفان', iso: 'SD-KS', lat: 11.20, lon: 29.42 },
+    { name: 'West Kordofan', ar: 'غرب كردفان', iso: 'SD-KW', lat: 11.40, lon: 27.70 },
+];
+
+const map = L.map('sudan-map').setView([15.5, 30], 5);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org">OSM</a> &copy; <a href="https://carto.com">CARTO</a>',
+    maxZoom: 12
+}).addTo(map);
+
+const goldIcon = L.divIcon({
+    className: '',
+    html: '<div style="width:12px;height:12px;background:#fbbf24;border-radius:50%;border:2px solid #0b0f1a;box-shadow:0 0 8px rgba(251,191,36,0.5)"></div>',
+    iconSize: [12, 12], iconAnchor: [6, 6]
 });
+
+states.forEach(s => {
+    L.marker([s.lat, s.lon], { icon: goldIcon })
+        .addTo(map)
+        .bindPopup(`<div style="font-family:Inter,sans-serif;text-align:center">
+            <strong>${s.name}</strong><br>
+            <span style="font-family:'Noto Kufi Arabic',sans-serif;color:#d97706">${s.ar}</span><br>
+            <code style="font-size:0.8rem">${s.iso}</code><br>
+            <code style="font-size:0.75rem;color:#888">SELECT SUDAN_GeoCode('${s.name}')</code>
+        </div>`);
+});
+
+// ===== SQL Playground =====
+const queries = [
+    {
+        sql: `<span class="kw">SELECT</span> * <span class="kw">FROM</span> <span class="fn">SUDAN_Providers</span>();`,
+        result: `<table><thead><tr><th>provider_id</th><th>name</th><th>name_ar</th><th>description</th></tr></thead><tbody>
+<tr><td>worldbank</td><td>World Bank</td><td>البنك الدولي</td><td>World Development Indicators</td></tr>
+<tr><td>who</td><td>World Health Organization</td><td>منظمة الصحة العالمية</td><td>Global Health Observatory</td></tr>
+<tr><td>fao</td><td>Food and Agriculture Org.</td><td>منظمة الأغذية والزراعة</td><td>FAOSTAT agricultural statistics</td></tr>
+<tr><td>unhcr</td><td>UNHCR</td><td>المفوضية السامية</td><td>UN Refugee Agency data</td></tr>
+<tr><td>ilo</td><td>International Labour Org.</td><td>منظمة العمل الدولية</td><td>Labour statistics</td></tr>
+</tbody></table>`
+    },
+    {
+        sql: `<span class="kw">SELECT</span> year, value <span class="kw">FROM</span> <span class="fn">SUDAN_WorldBank</span>(<span class="str">'SP.POP.TOTL'</span>)\n<span class="kw">WHERE</span> year >= <span class="num">2020</span> <span class="kw">ORDER BY</span> year;`,
+        result: `<table><thead><tr><th>year</th><th>value</th></tr></thead><tbody>
+<tr><td>2020</td><td>46,789,231</td></tr>
+<tr><td>2021</td><td>48,066,924</td></tr>
+<tr><td>2022</td><td>49,383,346</td></tr>
+<tr><td>2023</td><td>50,042,791</td></tr>
+<tr><td>2024</td><td>50,448,963</td></tr>
+</tbody></table>`
+    },
+    {
+        sql: `<span class="kw">SELECT</span> year, population_type, value\n<span class="kw">FROM</span> <span class="fn">SUDAN_UNHCR</span>(<span class="str">'refugees'</span>)\n<span class="kw">WHERE</span> year >= <span class="num">2022</span> <span class="kw">ORDER BY</span> year <span class="kw">DESC</span>;`,
+        result: `<table><thead><tr><th>year</th><th>population_type</th><th>value</th></tr></thead><tbody>
+<tr><td>2025</td><td>refugees</td><td>2,466,231</td></tr>
+<tr><td>2024</td><td>refugees</td><td>2,094,373</td></tr>
+<tr><td>2023</td><td>refugees</td><td>1,496,923</td></tr>
+<tr><td>2022</td><td>refugees</td><td>837,188</td></tr>
+</tbody></table>`
+    },
+    {
+        sql: `<span class="kw">SELECT</span> state_name, state_name_ar, iso_code\n<span class="kw">FROM</span> <span class="fn">SUDAN_States</span>() <span class="kw">LIMIT</span> <span class="num">6</span>;`,
+        result: `<table><thead><tr><th>state_name</th><th>state_name_ar</th><th>iso_code</th></tr></thead><tbody>
+<tr><td>Khartoum</td><td>الخرطوم</td><td>SD-KH</td></tr>
+<tr><td>Al Jazirah</td><td>الجزيرة</td><td>SD-GZ</td></tr>
+<tr><td>Al Qadarif</td><td>القضارف</td><td>SD-GD</td></tr>
+<tr><td>Kassala</td><td>كسلا</td><td>SD-KA</td></tr>
+<tr><td>Red Sea</td><td>البحر الأحمر</td><td>SD-RS</td></tr>
+<tr><td>River Nile</td><td>نهر النيل</td><td>SD-NR</td></tr>
+</tbody></table>`
+    },
+];
+
+let currentQuery = 0;
+function loadQuery(idx, btn) {
+    currentQuery = idx;
+    document.querySelectorAll('.playground-tab').forEach(t => t.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    document.getElementById('pgEditor').innerHTML = '<code>' + queries[idx].sql + '</code>';
+    document.getElementById('pgResult').innerHTML = '<span style="color:var(--text-muted)">Click "Run" to execute the query.</span>';
+}
+function runQuery() {
+    const result = document.getElementById('pgResult');
+    result.innerHTML = '<span style="color:var(--accent)">Executing...</span>';
+    setTimeout(() => {
+        result.innerHTML = queries[currentQuery].result;
+        showToast('Query executed successfully!');
+    }, 600);
+}
+loadQuery(0, null);
 </script>
 
 </body>
