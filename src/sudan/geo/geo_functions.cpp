@@ -13,6 +13,7 @@
 // SUDAN
 #include "sudan/providers.hpp"
 #include "sudan/http_client.hpp"
+#include "sudan/geo/sudan_boundaries_data.hpp"
 
 namespace duckdb {
 
@@ -53,19 +54,6 @@ static const SudanState SUDAN_STATES[] = {
 };
 
 static constexpr idx_t SUDAN_STATE_COUNT = sizeof(SUDAN_STATES) / sizeof(SudanState);
-
-//! Generate a simplified GeoJSON point geometry for a state centroid
-static string MakePointGeoJSON(double lon, double lat) {
-	return "{\"type\":\"Point\",\"coordinates\":[" + std::to_string(lon) + "," + std::to_string(lat) + "]}";
-}
-
-//! Generate a simplified GeoJSON polygon for Sudan's country boundary (bounding box approximation)
-static string MakeCountryGeoJSON() {
-	// Sudan approximate bounding box
-	return "{\"type\":\"Polygon\",\"coordinates\":[["
-	       "[21.8,8.7],[21.8,22.2],[38.6,22.2],[38.6,8.7],[21.8,8.7]"
-	       "]]}";
-}
 
 //======================================================================================================================
 // SUDAN_Boundaries
@@ -153,7 +141,7 @@ struct SudanBoundaries {
 			row.name = "Sudan";
 			row.name_ar = "\xd8\xa7\xd9\x84\xd8\xb3\xd9\x88\xd8\xaf\xd8\xa7\xd9\x86";
 			row.iso_code = "SDN";
-			row.geojson = MakeCountryGeoJSON();
+			row.geojson = COUNTRY_BOUNDARY_GEOJSON;
 			state.rows.push_back(row);
 		} else if (bind_data.level == "state") {
 			for (idx_t i = 0; i < SUDAN_STATE_COUNT; i++) {
@@ -162,7 +150,7 @@ struct SudanBoundaries {
 				row.name = SUDAN_STATES[i].name;
 				row.name_ar = SUDAN_STATES[i].name_ar;
 				row.iso_code = SUDAN_STATES[i].iso_code;
-				row.geojson = MakePointGeoJSON(SUDAN_STATES[i].centroid_lon, SUDAN_STATES[i].centroid_lat);
+				row.geojson = GetStateBoundaryGeoJSON(i);
 				state.rows.push_back(row);
 			}
 		} else if (bind_data.level == "locality") {
@@ -289,13 +277,14 @@ struct SudanStates {
 		}
 
 		for (idx_t row_idx = 0; row_idx < output_size; row_idx++) {
-			const auto &s = SUDAN_STATES[state.current_row + row_idx];
+			idx_t state_idx = state.current_row + row_idx;
+			const auto &s = SUDAN_STATES[state_idx];
 			output.data[0].SetValue(row_idx, string(s.name));
 			output.data[1].SetValue(row_idx, string(s.name_ar));
 			output.data[2].SetValue(row_idx, string(s.iso_code));
 			output.data[3].SetValue(row_idx, Value::DOUBLE(s.centroid_lon));
 			output.data[4].SetValue(row_idx, Value::DOUBLE(s.centroid_lat));
-			output.data[5].SetValue(row_idx, MakePointGeoJSON(s.centroid_lon, s.centroid_lat));
+			output.data[5].SetValue(row_idx, GetStateBoundaryGeoJSON(state_idx));
 		}
 
 		state.current_row += output_size;

@@ -18,17 +18,47 @@ WHERE state_name = 'Khartoum';
 ----
 Khartoum	الخرطوم	SD-KH
 
+# Test SUDAN_States returns polygon GeoJSON (not Point)
+query I
+SELECT LEFT(geojson, 22) FROM SUDAN_States() WHERE state_name = 'Khartoum';
+----
+{"type":"MultiPolygon"
+
+# Test SUDAN_States polygon GeoJSON is substantial (>100 chars)
+query I
+SELECT LENGTH(geojson) > 100 FROM SUDAN_States() WHERE state_name = 'Khartoum';
+----
+true
+
 # Test SUDAN_Boundaries country level
 query I
 SELECT count(*) FROM SUDAN_Boundaries('country');
 ----
 1
 
+# Test SUDAN_Boundaries country returns MultiPolygon
+query I
+SELECT LEFT(geojson, 22) FROM SUDAN_Boundaries('country');
+----
+{"type":"MultiPolygon"
+
 # Test SUDAN_Boundaries state level returns 18 states
 query I
 SELECT count(*) FROM SUDAN_Boundaries('state');
 ----
 18
+
+# Test SUDAN_Boundaries state returns polygon GeoJSON (not Point)
+query I
+SELECT LEFT(geojson, 22) FROM SUDAN_Boundaries('state') WHERE state_name = 'Khartoum';
+----
+{"type":"MultiPolygon"
+
+# Test that all state boundaries are substantial (>100 chars)
+query I
+SELECT MIN(LENGTH(geojson)) > 100 FROM SUDAN_Boundaries('state');
+----
+true
 
 # Test SUDAN_GeoCode with English name
 query I
