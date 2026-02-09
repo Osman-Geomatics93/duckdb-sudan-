@@ -31,6 +31,3 @@ vcpkg-manifest-install.log
 Thumbs.db
 Desktop.ini
 .DS_Store
-
-# Build scripts (local)
-do_build.bat
