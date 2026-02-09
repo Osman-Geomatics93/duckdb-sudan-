@@ -1,11 +1,24 @@
+<div align="center">
+
 # DuckDB Sudan Extension
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![DuckDB](https://img.shields.io/badge/DuckDB-v1.2+-blue.svg)](https://duckdb.org)
+[![Docs](https://img.shields.io/badge/Docs-Live-green.svg)](https://osman-geomatics93.github.io/duckdb-sudan-/)
+[![SQL Functions](https://img.shields.io/badge/SQL_Functions-12-orange.svg)](#all-sql-functions)
+[![APIs](https://img.shields.io/badge/APIs-5-purple.svg)](#data-providers)
 
-A DuckDB extension that provides unified SQL access to Sudan's publicly available data across **5 international APIs** — World Bank, WHO, FAO, UNHCR, and ILO.
+**Unified SQL access to Sudan's humanitarian, development, and geospatial data from 5 international APIs**
+
+[**Explore the Documentation**](https://osman-geomatics93.github.io/duckdb-sudan-/) | [**View on GitHub**](https://github.com/Osman-Geomatics93/duckdb-sudan-) | [**Report Bug**](https://github.com/Osman-Geomatics93/duckdb-sudan-/issues)
+
+---
+
+</div>
 
 Sudan is experiencing one of the world's largest humanitarian crises, yet its data is scattered across dozens of international APIs with incompatible formats and authentication schemes. This extension brings **all publicly available Sudan data into DuckDB** — enabling analysts, researchers, and humanitarian workers to query demographics, economics, health, agriculture, displacement, and geospatial boundaries using standard SQL.
+
+> **Interactive Documentation** — Visit [**osman-geomatics93.github.io/duckdb-sudan-**](https://osman-geomatics93.github.io/duckdb-sudan-/) for live charts, interactive map, SQL playground, and bilingual (Arabic/English) reference.
 
 ![DuckDB Sudan Extension Demo](docs/demo.png)
 
@@ -263,6 +276,12 @@ src/
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
+
+## Links
+
+- [**Documentation Site**](https://osman-geomatics93.github.io/duckdb-sudan-/) — Interactive docs with charts, map, SQL playground
+- [**GitHub Repository**](https://github.com/Osman-Geomatics93/duckdb-sudan-)
+- [**Function Reference**](docs/functions.md) — Complete API documentation
 
 ## Acknowledgments
 
