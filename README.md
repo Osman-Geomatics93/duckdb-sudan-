@@ -98,6 +98,8 @@ LOAD sudan;
 | `LNK1104: cannot open file 'duckdb.exe'` | Close any running DuckDB instance before building |
 | `HTTP Error: 404` on `INSTALL sudan FROM community` | Use **Option A** or **Option B** above — community registry pending approval |
 | `requires the extension httpfs` | Run `INSTALL httpfs; LOAD httpfs;` before setting the custom repository |
+| `SUDAN_GeoCode('الخرطوم')` returns empty | Windows CMD encoding issue — run `chcp 65001` first, or use **Windows Terminal** |
+| `st_geomfromgeojson is not in the catalog` | Run `INSTALL spatial; LOAD spatial;` to use geometry functions with GeoJSON |
 
 ### Population & Demographics
 
@@ -192,7 +194,7 @@ SELECT state_name, state_name_ar, iso_code FROM SUDAN_States();
 -- Lookup state code from Arabic name
 SELECT SUDAN_GeoCode('الخرطوم');  -- returns 'SD-KH'
 
--- Use with DuckDB's spatial extension
+-- Use with DuckDB's spatial extension (requires: INSTALL spatial; LOAD spatial;)
 SELECT state_name, ST_GeomFromGeoJSON(geojson) AS geom
 FROM SUDAN_States();
 ```
