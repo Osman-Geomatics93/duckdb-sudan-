@@ -558,6 +558,26 @@
 
     <!-- Install -->
     <div class="install-box">
+        <div style="font-size:0.7rem;color:var(--accent);font-weight:600;margin-bottom:0.5rem;letter-spacing:0.05em;text-transform:uppercase">
+            <span class="en-text">Build from Source (Community submission pending)</span>
+            <span class="ar-text" style="font-family:var(--font-arabic)">البناء من المصدر (في انتظار الموافقة)</span>
+        </div>
+        <code><span class="cm">-- Clone and build</span>
+git clone --recurse-submodules https://github.com/Osman-Geomatics93/duckdb-sudan-.git
+<span class="kw">cd</span> duckdb-sudan- && build_release.bat
+
+<span class="cm">-- Launch DuckDB with unsigned extension support</span>
+build\release\duckdb.exe -unsigned
+
+<span class="cm">-- Load the extension</span>
+<span class="kw">LOAD</span> sudan;</code>
+        <button class="copy-btn" onclick="copyCode(this)" style="top:0.5rem;right:0.5rem">Copy</button>
+    </div>
+    <div class="install-box" style="margin-top:0.75rem;opacity:0.6">
+        <div style="font-size:0.7rem;color:var(--text-muted);font-weight:600;margin-bottom:0.5rem;letter-spacing:0.05em;text-transform:uppercase">
+            <span class="en-text">Coming Soon — After community approval</span>
+            <span class="ar-text" style="font-family:var(--font-arabic)">قريباً — بعد الموافقة</span>
+        </div>
         <code><span class="kw">INSTALL</span> sudan <span class="kw">FROM</span> community;
 <span class="kw">LOAD</span> sudan;</code>
         <button class="copy-btn" onclick="copyCode(this)" style="top:0.5rem;right:0.5rem">Copy</button>

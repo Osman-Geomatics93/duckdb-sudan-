@@ -36,13 +36,37 @@ Plus **12 SQL functions** including indicator search, geospatial boundaries, and
 
 ## Quick Start
 
+```bash
+# Clone and build
+git clone --recurse-submodules https://github.com/Osman-Geomatics93/duckdb-sudan-.git
+cd duckdb-sudan-
+
+# Windows
+build_release.bat
+
+# Linux / macOS
+GEN=ninja make release
+```
+
+```bash
+# Launch DuckDB with unsigned extension support
+./build/release/duckdb -unsigned    # Linux/macOS
+build\release\duckdb.exe -unsigned  # Windows
+```
+
 ```sql
--- Load the extension (use -unsigned flag when launching DuckDB)
+-- Load the extension
 LOAD sudan;
 
 -- List all available data providers
 SELECT * FROM SUDAN_Providers();
 ```
+
+> **Coming soon** — Once the [community extensions PR](https://github.com/duckdb/community-extensions/pull/1235) is merged, install with:
+> ```sql
+> INSTALL sudan FROM community;
+> LOAD sudan;
+> ```
 
 ### Population & Demographics
 
