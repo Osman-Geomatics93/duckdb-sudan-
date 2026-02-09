@@ -7,6 +7,8 @@ A DuckDB extension that provides unified SQL access to Sudan's publicly availabl
 
 Sudan is experiencing one of the world's largest humanitarian crises, yet its data is scattered across dozens of international APIs with incompatible formats and authentication schemes. This extension brings **all publicly available Sudan data into DuckDB** — enabling analysts, researchers, and humanitarian workers to query demographics, economics, health, agriculture, displacement, and geospatial boundaries using standard SQL.
 
+![DuckDB Sudan Extension Demo](docs/demo.png)
+
 ## Data Providers
 
 | Provider | Function | Data | Rows (Sudan) |
