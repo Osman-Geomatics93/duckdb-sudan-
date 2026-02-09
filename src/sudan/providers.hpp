@@ -51,7 +51,7 @@ static const std::vector<Provider> PROVIDERS = {
     {"fao", "Food and Agriculture Organization",
      "\xd9\x85\xd9\x86\xd8\xb8\xd9\x85\xd8\xa9 \xd8\xa7\xd9\x84\xd8\xa3\xd8\xba\xd8\xb0\xd9\x8a\xd8\xa9 \xd9\x88\xd8\xa7\xd9\x84\xd8\xb2\xd8\xb1\xd8\xa7\xd8\xb9\xd8\xa9",
      "FAOSTAT agricultural statistics",
-     "https://fenixservices.fao.org/faostat/api/v1/", "276"},
+     "https://faostatservices.fao.org/api/v1/", "276"},
     {"unhcr", "UNHCR",
      "\xd8\xa7\xd9\x84\xd9\x85\xd9\x81\xd9\x88\xd8\xb6\xd9\x8a\xd8\xa9 \xd8\xa7\xd9\x84\xd8\xb3\xd8\xa7\xd9\x85\xd9\x8a\xd8\xa9",
      "UN Refugee Agency displacement and population data",
@@ -59,7 +59,7 @@ static const std::vector<Provider> PROVIDERS = {
     {"ilo", "International Labour Organization",
      "\xd9\x85\xd9\x86\xd8\xb8\xd9\x85\xd8\xa9 \xd8\xa7\xd9\x84\xd8\xb9\xd9\x85\xd9\x84 \xd8\xa7\xd9\x84\xd8\xaf\xd9\x88\xd9\x84\xd9\x8a\xd8\xa9",
      "International Labour Organization statistics",
-     "https://www.ilo.org/ilostat/api/v1/", "SDN"},
+     "https://sdmx.ilo.org/rest/", "SDN"},
 };
 
 //! Lookup a country by ISO3 code

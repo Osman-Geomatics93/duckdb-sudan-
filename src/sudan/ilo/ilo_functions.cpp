@@ -103,20 +103,42 @@ struct SudanILO {
 	                         std::vector<DataRow> &rows) {
 
 		// ILOSTAT SDMX REST API for data
-		// The ILOSTAT API uses SDMX-JSON format
-		string url = "https://www.ilo.org/sdmx/rest/data/ILO,DF_" + indicator + "/" +
-		             country_iso3 + "..?format=jsondata&detail=dataonly";
+		// Base URL: sdmx.ilo.org/rest (changed from www.ilo.org/sdmx/rest in 2024)
+		// Key format: REF_AREA.FREQ.remaining_dims (country first, then A for Annual)
+		// Dataflow IDs already have DF_ prefix in the catalog
+		string dataflow = indicator;
+		if (dataflow.substr(0, 3) != "DF_") {
+			dataflow = "DF_" + dataflow;
+		}
+		// The number of dimensions varies per indicator, so try multiple key lengths.
+		// SDMX wildcards empty positions with dots. Most ILO indicators have 3-5 dimensions
+		// after REF_AREA and FREQ.
+		string base = "https://sdmx.ilo.org/rest/data/ILO," + dataflow + "/" +
+		              country_iso3 + ".A";
+		string suffix = "?format=jsondata&detail=dataonly&lastNObservations=20";
+
+		// Try keys with 1 to 5 wildcarded dimensions after FREQ
+		static const char *key_suffixes[] = {".", "..", "...", "....", "....."};
 
 		auto &cache = sudan::ResponseCache::Instance();
-		string body = cache.Get(url);
+		string body;
+
+		for (const auto &ks : key_suffixes) {
+			string url = base + string(ks) + suffix;
+			body = cache.Get(url);
+			if (!body.empty()) {
+				break;
+			}
+			auto response = HttpClient::Get(settings, url);
+			if (response.status_code == 200 && response.error.empty() && !response.body.empty()) {
+				body = response.body;
+				cache.Put(url, body);
+				break;
+			}
+		}
 
 		if (body.empty()) {
-			auto response = HttpClient::Get(settings, url);
-			if (response.status_code != 200 || !response.error.empty()) {
-				return;
-			}
-			body = response.body;
-			cache.Put(url, body);
+			return; // All key formats failed or server unavailable
 		}
 
 		auto json_data = yyjson_read(body.c_str(), body.size(), YYJSON_READ_NOFLAG);
@@ -126,8 +148,15 @@ struct SudanILO {
 
 		auto root_val = yyjson_doc_get_root(json_data);
 
-		// SDMX-JSON format: dataSets[0].observations or dataSets[0].series
+		// SDMX-JSON 2.0 uses "data" > "dataSets", while 1.0 uses "dataSets" at root
 		auto datasets_arr = yyjson_obj_get(root_val, "dataSets");
+		if (!yyjson_is_arr(datasets_arr) || yyjson_arr_size(datasets_arr) == 0) {
+			// Try SDMX-JSON 2.0 format: root > data > dataSets
+			auto data_obj = yyjson_obj_get(root_val, "data");
+			if (yyjson_is_obj(data_obj)) {
+				datasets_arr = yyjson_obj_get(data_obj, "dataSets");
+			}
+		}
 		if (!yyjson_is_arr(datasets_arr) || yyjson_arr_size(datasets_arr) == 0) {
 			yyjson_doc_free(json_data);
 			return;
@@ -135,95 +164,147 @@ struct SudanILO {
 
 		auto dataset = yyjson_arr_get(datasets_arr, 0);
 
-		// Try flat observations first (simpler format)
-		auto observations = yyjson_obj_get(dataset, "observations");
-		if (yyjson_is_obj(observations)) {
-			// Get dimension values from structure
-			auto structure = yyjson_obj_get(root_val, "structure");
-			auto dimensions = yyjson_obj_get(structure, "dimensions");
-			auto observation_dims = yyjson_obj_get(dimensions, "observation");
-
-			// Extract time period values
-			std::vector<string> time_values;
-			if (yyjson_is_arr(observation_dims)) {
-				auto obs_dim_len = yyjson_arr_size(observation_dims);
-				for (size_t d = 0; d < obs_dim_len; d++) {
-					auto dim = yyjson_arr_get(observation_dims, d);
-					auto dim_id = yyjson_obj_get(dim, "id");
-					if (yyjson_is_str(dim_id) && string(yyjson_get_str(dim_id)) == "TIME_PERIOD") {
-						auto values = yyjson_obj_get(dim, "values");
-						if (yyjson_is_arr(values)) {
-							auto val_len = yyjson_arr_size(values);
-							for (size_t v = 0; v < val_len; v++) {
-								auto val_obj = yyjson_arr_get(values, v);
-								auto val_id = yyjson_obj_get(val_obj, "id");
-								if (yyjson_is_str(val_id)) {
-									time_values.push_back(yyjson_get_str(val_id));
-								}
-							}
-						}
-					}
-				}
-			}
-
-			// Parse observations
-			yyjson_val *key, *val;
-			yyjson_obj_iter iter;
-			yyjson_obj_iter_init(observations, &iter);
-			while ((key = yyjson_obj_iter_next(&iter))) {
-				val = yyjson_obj_iter_get_val(key);
-
-				DataRow row;
-				row.indicator = indicator;
-				row.country = country_iso3;
-				row.has_value = false;
-
-				// The key is colon-separated indices like "0:0:0:5"
-				string obs_key = yyjson_get_str(key);
-
-				// Extract time period from the last index
-				auto last_colon = obs_key.rfind(':');
-				if (last_colon != string::npos) {
-					try {
-						size_t time_idx = std::stoul(obs_key.substr(last_colon + 1));
-						if (time_idx < time_values.size()) {
-							try {
-								row.year = std::stoi(time_values[time_idx]);
-							} catch (...) {
-								row.year = 0;
-							}
-						}
-					} catch (...) {
-					}
-				}
-
-				// Value is in array format: [value]
-				if (yyjson_is_arr(val) && yyjson_arr_size(val) > 0) {
-					auto first_val = yyjson_arr_get(val, 0);
-					if (yyjson_is_real(first_val)) {
-						row.value = yyjson_get_real(first_val);
-						row.has_value = true;
-					} else if (yyjson_is_int(first_val)) {
-						row.value = static_cast<double>(yyjson_get_int(first_val));
-						row.has_value = true;
-					}
-				}
-
-				if (row.has_value) {
-					rows.push_back(row);
+		// Get structure — in SDMX-JSON 2.0 it's under data.structures[0], in 1.0 it's at root
+		yyjson_val *structure = yyjson_obj_get(root_val, "structure");
+		if (!structure) {
+			auto data_obj = yyjson_obj_get(root_val, "data");
+			if (yyjson_is_obj(data_obj)) {
+				auto structures_arr = yyjson_obj_get(data_obj, "structures");
+				if (yyjson_is_arr(structures_arr) && yyjson_arr_size(structures_arr) > 0) {
+					structure = yyjson_arr_get(structures_arr, 0);
 				}
 			}
 		}
 
-		// Try series format
+		// Helper: extract string values from a dimension's values array
+		auto ExtractDimValues = [](yyjson_val *dim) -> std::vector<string> {
+			std::vector<string> result;
+			auto values = yyjson_obj_get(dim, "values");
+			if (yyjson_is_arr(values)) {
+				auto len = yyjson_arr_size(values);
+				for (size_t i = 0; i < len; i++) {
+					auto val_obj = yyjson_arr_get(values, i);
+					auto val_id = yyjson_obj_get(val_obj, "id");
+					if (yyjson_is_str(val_id)) {
+						result.push_back(yyjson_get_str(val_id));
+					} else {
+						auto val_name = yyjson_obj_get(val_obj, "name");
+						if (yyjson_is_str(val_name)) {
+							result.push_back(yyjson_get_str(val_name));
+						} else {
+							result.push_back("");
+						}
+					}
+				}
+			}
+			return result;
+		};
+
+		// Helper: parse colon-separated key into indices
+		auto ParseKeyIndices = [](const string &key) -> std::vector<size_t> {
+			std::vector<size_t> indices;
+			size_t start = 0;
+			while (start <= key.size()) {
+				auto colon = key.find(':', start);
+				if (colon == string::npos) {
+					colon = key.size();
+				}
+				try {
+					indices.push_back(std::stoul(key.substr(start, colon - start)));
+				} catch (...) {
+					indices.push_back(0);
+				}
+				start = colon + 1;
+			}
+			return indices;
+		};
+
+		// Helper: extract value from observation array [value, ...]
+		auto ExtractObsValue = [](yyjson_val *obs_val, double &value) -> bool {
+			if (yyjson_is_arr(obs_val) && yyjson_arr_size(obs_val) > 0) {
+				auto first_val = yyjson_arr_get(obs_val, 0);
+				if (yyjson_is_real(first_val)) {
+					value = yyjson_get_real(first_val);
+					return true;
+				} else if (yyjson_is_int(first_val)) {
+					value = static_cast<double>(yyjson_get_int(first_val));
+					return true;
+				}
+			}
+			return false;
+		};
+
+		// Build dimension lookup tables from structure
+		// Series dimensions: REF_AREA, FREQ, SEX, AGE, MEASURE, etc.
+		// Observation dimensions: TIME_PERIOD
+		struct DimInfo {
+			string id;
+			std::vector<string> values;
+		};
+		std::vector<DimInfo> series_dims;
+		std::vector<DimInfo> obs_dims;
+
+		if (structure) {
+			auto dimensions = yyjson_obj_get(structure, "dimensions");
+
+			// Series dimensions
+			auto series_dim_arr = yyjson_obj_get(dimensions, "series");
+			if (yyjson_is_arr(series_dim_arr)) {
+				auto len = yyjson_arr_size(series_dim_arr);
+				for (size_t i = 0; i < len; i++) {
+					auto dim = yyjson_arr_get(series_dim_arr, i);
+					DimInfo info;
+					auto dim_id = yyjson_obj_get(dim, "id");
+					info.id = yyjson_is_str(dim_id) ? yyjson_get_str(dim_id) : "";
+					info.values = ExtractDimValues(dim);
+					series_dims.push_back(std::move(info));
+				}
+			}
+
+			// Observation dimensions
+			auto obs_dim_arr = yyjson_obj_get(dimensions, "observation");
+			if (yyjson_is_arr(obs_dim_arr)) {
+				auto len = yyjson_arr_size(obs_dim_arr);
+				for (size_t i = 0; i < len; i++) {
+					auto dim = yyjson_arr_get(obs_dim_arr, i);
+					DimInfo info;
+					auto dim_id = yyjson_obj_get(dim, "id");
+					info.id = yyjson_is_str(dim_id) ? yyjson_get_str(dim_id) : "";
+					info.values = ExtractDimValues(dim);
+					obs_dims.push_back(std::move(info));
+				}
+			}
+		}
+
+		// Helper: look up a dimension value by ID and index
+		auto LookupDimValue = [](const std::vector<DimInfo> &dims, const string &dim_id,
+		                         const std::vector<size_t> &indices) -> string {
+			for (size_t i = 0; i < dims.size() && i < indices.size(); i++) {
+				if (dims[i].id == dim_id && indices[i] < dims[i].values.size()) {
+					return dims[i].values[indices[i]];
+				}
+			}
+			return "";
+		};
+
+		// Parse series format (SDMX-JSON 2.0 — used by ILO)
 		auto series = yyjson_obj_get(dataset, "series");
-		if (yyjson_is_obj(series) && !yyjson_is_obj(observations)) {
-			// Similar parsing for series format
+		if (yyjson_is_obj(series)) {
 			yyjson_val *series_key, *series_val;
 			yyjson_obj_iter series_iter;
 			yyjson_obj_iter_init(series, &series_iter);
 			while ((series_key = yyjson_obj_iter_next(&series_iter))) {
 				series_val = yyjson_obj_iter_get_val(series_key);
+
+				string sk = yyjson_get_str(series_key);
+				auto series_indices = ParseKeyIndices(sk);
+
+				// Extract dimension values from series key
+				string sex = LookupDimValue(series_dims, "SEX", series_indices);
+				string classif1 = LookupDimValue(series_dims, "AGE", series_indices);
+				if (classif1.empty()) {
+					classif1 = LookupDimValue(series_dims, "CLASSIF1", series_indices);
+				}
 
 				auto obs = yyjson_obj_get(series_val, "observations");
 				if (!yyjson_is_obj(obs)) {
@@ -239,17 +320,22 @@ struct SudanILO {
 					DataRow row;
 					row.indicator = indicator;
 					row.country = country_iso3;
+					row.sex = sex;
+					row.classif1 = classif1;
 					row.has_value = false;
 
-					if (yyjson_is_arr(obs_val) && yyjson_arr_size(obs_val) > 0) {
-						auto first_val = yyjson_arr_get(obs_val, 0);
-						if (yyjson_is_real(first_val)) {
-							row.value = yyjson_get_real(first_val);
-							row.has_value = true;
-						} else if (yyjson_is_int(first_val)) {
-							row.value = static_cast<double>(yyjson_get_int(first_val));
-							row.has_value = true;
-						}
+					// Observation key maps to observation dimensions (typically TIME_PERIOD)
+					string ok = yyjson_get_str(obs_key);
+					auto obs_indices = ParseKeyIndices(ok);
+					string time_str = LookupDimValue(obs_dims, "TIME_PERIOD", obs_indices);
+					try {
+						row.year = std::stoi(time_str);
+					} catch (...) {
+						row.year = 0;
+					}
+
+					if (ExtractObsValue(obs_val, row.value)) {
+						row.has_value = true;
 					}
 
 					if (row.has_value) {
@@ -267,7 +353,7 @@ struct SudanILO {
 		auto global_state = make_uniq_base<GlobalTableFunctionState, State>();
 		auto &state = global_state->Cast<State>();
 
-		HttpSettings settings = HttpClient::ExtractHttpSettings(context, "https://www.ilo.org");
+		HttpSettings settings = HttpClient::ExtractHttpSettings(context, "https://sdmx.ilo.org");
 		settings.timeout = 90;
 
 		for (const auto &country : bind_data.countries) {

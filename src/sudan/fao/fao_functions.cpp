@@ -118,26 +118,8 @@ struct SudanFAO {
 		return it != fao_codes.end() ? it->second : iso3;
 	}
 
-	static void FetchFAOData(const HttpSettings &settings, const string &dataset, const string &element,
-	                         const string &country_iso3, std::vector<DataRow> &rows) {
-
-		string area_code = GetFAOAreaCode(country_iso3);
-
-		// FAOSTAT API endpoint
-		string url = "https://fenixservices.fao.org/faostat/api/v1/en/data/" + dataset +
-		             "?area=" + area_code + "&output_type=objects";
-
-		auto &cache = sudan::ResponseCache::Instance();
-		string body = cache.Get(url);
-
-		if (body.empty()) {
-			auto response = HttpClient::Get(settings, url);
-			if (response.status_code != 200 || !response.error.empty()) {
-				return;
-			}
-			body = response.body;
-			cache.Put(url, body);
-		}
+	static void ParseFAOPage(const string &body, const string &element_lower, const string &dataset,
+	                         std::vector<DataRow> &rows) {
 
 		auto json_data = yyjson_read(body.c_str(), body.size(), YYJSON_READ_NOFLAG);
 		if (!json_data) {
@@ -151,18 +133,16 @@ struct SudanFAO {
 			return;
 		}
 
-		string element_lower = StringUtil::Lower(element);
 		auto arr_len = yyjson_arr_size(data_arr);
-
 		for (size_t i = 0; i < arr_len; i++) {
 			auto elem = yyjson_arr_get(data_arr, i);
 
-			// Filter by element name
+			// Filter by element name (partial, case-insensitive match)
 			auto elem_val = yyjson_obj_get(elem, "Element");
+			string elem_name;
 			if (yyjson_is_str(elem_val)) {
-				string elem_name = yyjson_get_str(elem_val);
+				elem_name = yyjson_get_str(elem_val);
 				string elem_name_lower = StringUtil::Lower(elem_name);
-				// Match on element name (case-insensitive, partial match)
 				if (elem_name_lower.find(element_lower) == string::npos) {
 					continue;
 				}
@@ -223,12 +203,38 @@ struct SudanFAO {
 		yyjson_doc_free(json_data);
 	}
 
+	static void FetchFAOData(const HttpSettings &settings, const string &dataset, const string &element,
+	                         const string &country_iso3, std::vector<DataRow> &rows) {
+
+		string area_code = GetFAOAreaCode(country_iso3);
+		string element_lower = StringUtil::Lower(element);
+		auto &cache = sudan::ResponseCache::Instance();
+
+		// FAOSTAT API has a hard cap around limit=500 (higher values return empty).
+		// The API does not support offset-based pagination.
+		string url = "https://faostatservices.fao.org/api/v1/en/data/" + dataset +
+		             "?area=" + area_code + "&output_type=objects&limit=500";
+
+		string body = cache.Get(url);
+
+		if (body.empty()) {
+			auto response = HttpClient::Get(settings, url);
+			if (response.status_code != 200 || !response.error.empty() || response.body.empty()) {
+				return;
+			}
+			body = response.body;
+			cache.Put(url, body);
+		}
+
+		ParseFAOPage(body, element_lower, dataset, rows);
+	}
+
 	static unique_ptr<GlobalTableFunctionState> Init(ClientContext &context, TableFunctionInitInput &input) {
 		auto &bind_data = input.bind_data->Cast<BindData>();
 		auto global_state = make_uniq_base<GlobalTableFunctionState, State>();
 		auto &state = global_state->Cast<State>();
 
-		HttpSettings settings = HttpClient::ExtractHttpSettings(context, "https://fenixservices.fao.org");
+		HttpSettings settings = HttpClient::ExtractHttpSettings(context, "https://faostatservices.fao.org");
 		settings.timeout = 90;
 
 		for (const auto &country : bind_data.countries) {

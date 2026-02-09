@@ -104,8 +104,8 @@ struct SudanUNHCR {
 		}
 	};
 
-	//! Map population type to UNHCR API endpoint path
-	static string GetUNHCRPopulationType(const string &type) {
+	//! Map user-facing population type to UNHCR JSON field name
+	static string GetUNHCRFieldName(const string &type) {
 		string type_lower = StringUtil::Lower(type);
 		if (type_lower == "refugees" || type_lower == "ref") {
 			return "refugees";
@@ -114,10 +114,10 @@ struct SudanUNHCR {
 			return "idps";
 		}
 		if (type_lower == "asylum_seekers" || type_lower == "asylum") {
-			return "asylum-seekers";
+			return "asylum_seekers";
 		}
 		if (type_lower == "returned_refugees" || type_lower == "returned") {
-			return "returned-refugees";
+			return "returned_refugees";
 		}
 		if (type_lower == "stateless") {
 			return "stateless";
@@ -125,103 +125,119 @@ struct SudanUNHCR {
 		return type_lower;
 	}
 
-	static void FetchUNHCRData(const HttpSettings &settings, const string &population_type,
-	                           const string &country_iso3, std::vector<DataRow> &rows) {
+	static int64_t ParseUNHCRValue(yyjson_val *val) {
+		if (yyjson_is_int(val)) {
+			return yyjson_get_int(val);
+		}
+		if (yyjson_is_real(val)) {
+			return static_cast<int64_t>(yyjson_get_real(val));
+		}
+		if (yyjson_is_str(val)) {
+			try {
+				return std::stoll(yyjson_get_str(val));
+			} catch (...) {
+			}
+		}
+		return 0;
+	}
 
-		string pop_type = GetUNHCRPopulationType(population_type);
+	static void FetchUNHCRPage(const HttpSettings &settings, const string &url, const string &field_name,
+	                           std::vector<DataRow> &rows) {
 
-		// UNHCR Population Statistics API
-		// Try both as origin and asylum country
-		for (const auto &param_name : {"coo", "coa"}) {
-			string url = "https://api.unhcr.org/population/v1/" + pop_type +
-			             "/?limit=10000&" + string(param_name) + "=" + country_iso3;
+		auto &cache = sudan::ResponseCache::Instance();
+		string body = cache.Get(url);
 
-			auto &cache = sudan::ResponseCache::Instance();
-			string body = cache.Get(url);
+		if (body.empty()) {
+			auto response = HttpClient::Get(settings, url);
+			if (response.status_code != 200 || !response.error.empty()) {
+				return;
+			}
+			body = response.body;
+			cache.Put(url, body);
+		}
 
-			if (body.empty()) {
-				auto response = HttpClient::Get(settings, url);
-				if (response.status_code != 200 || !response.error.empty()) {
-					continue;
-				}
-				body = response.body;
-				cache.Put(url, body);
+		auto json_data = yyjson_read(body.c_str(), body.size(), YYJSON_READ_NOFLAG);
+		if (!json_data) {
+			return;
+		}
+
+		auto root_val = yyjson_doc_get_root(json_data);
+		auto items_arr = yyjson_obj_get(root_val, "items");
+		if (!yyjson_is_arr(items_arr)) {
+			yyjson_doc_free(json_data);
+			return;
+		}
+
+		auto arr_len = yyjson_arr_size(items_arr);
+
+		for (size_t i = 0; i < arr_len; i++) {
+			auto elem = yyjson_arr_get(items_arr, i);
+
+			// Extract the value for the requested population type
+			auto type_val = yyjson_obj_get(elem, field_name.c_str());
+			int64_t value = ParseUNHCRValue(type_val);
+			if (value == 0) {
+				continue; // Skip rows with 0 for the requested type
 			}
 
-			auto json_data = yyjson_read(body.c_str(), body.size(), YYJSON_READ_NOFLAG);
-			if (!json_data) {
-				continue;
+			DataRow row;
+			row.population_type = field_name;
+			row.value = value;
+			row.has_value = true;
+
+			auto year_val = yyjson_obj_get(elem, "year");
+			if (yyjson_is_int(year_val)) {
+				row.year = yyjson_get_int(year_val);
 			}
 
-			auto root_val = yyjson_doc_get_root(json_data);
-			auto items_arr = yyjson_obj_get(root_val, "items");
-			if (!yyjson_is_arr(items_arr)) {
-				yyjson_doc_free(json_data);
-				continue;
-			}
-
-			auto arr_len = yyjson_arr_size(items_arr);
-
-			for (size_t i = 0; i < arr_len; i++) {
-				auto elem = yyjson_arr_get(items_arr, i);
-
-				DataRow row;
-				row.population_type = population_type;
-				row.has_value = false;
-
-				auto year_val = yyjson_obj_get(elem, "year");
-				if (yyjson_is_int(year_val)) {
-					row.year = yyjson_get_int(year_val);
-				}
-
+			// Use ISO codes (coo_iso/coa_iso) when available
+			auto coo_iso = yyjson_obj_get(elem, "coo_iso");
+			if (yyjson_is_str(coo_iso)) {
+				row.country_origin = yyjson_get_str(coo_iso);
+			} else {
 				auto coo_val = yyjson_obj_get(elem, "coo");
 				if (yyjson_is_str(coo_val)) {
 					row.country_origin = yyjson_get_str(coo_val);
 				}
-				auto coo_name_val = yyjson_obj_get(elem, "coo_name");
-				if (yyjson_is_str(coo_name_val)) {
-					row.country_origin_name = yyjson_get_str(coo_name_val);
-				}
+			}
+			auto coo_name_val = yyjson_obj_get(elem, "coo_name");
+			if (yyjson_is_str(coo_name_val)) {
+				row.country_origin_name = yyjson_get_str(coo_name_val);
+			}
 
+			auto coa_iso = yyjson_obj_get(elem, "coa_iso");
+			if (yyjson_is_str(coa_iso)) {
+				row.country_asylum = yyjson_get_str(coa_iso);
+			} else {
 				auto coa_val = yyjson_obj_get(elem, "coa");
 				if (yyjson_is_str(coa_val)) {
 					row.country_asylum = yyjson_get_str(coa_val);
 				}
-				auto coa_name_val = yyjson_obj_get(elem, "coa_name");
-				if (yyjson_is_str(coa_name_val)) {
-					row.country_asylum_name = yyjson_get_str(coa_name_val);
-				}
-
-				// Different fields depending on population type
-				auto total_val = yyjson_obj_get(elem, "refugees");
-				if (!total_val) {
-					total_val = yyjson_obj_get(elem, "idps");
-				}
-				if (!total_val) {
-					total_val = yyjson_obj_get(elem, "asylum_seekers");
-				}
-				if (!total_val) {
-					total_val = yyjson_obj_get(elem, "returned_refugees");
-				}
-				if (!total_val) {
-					total_val = yyjson_obj_get(elem, "stateless");
-				}
-				if (!total_val) {
-					total_val = yyjson_obj_get(elem, "total");
-				}
-
-				if (yyjson_is_int(total_val)) {
-					row.value = yyjson_get_int(total_val);
-					row.has_value = true;
-				} else if (yyjson_is_real(total_val)) {
-					row.value = static_cast<int64_t>(yyjson_get_real(total_val));
-					row.has_value = true;
-				}
-
-				rows.push_back(row);
+			}
+			auto coa_name_val = yyjson_obj_get(elem, "coa_name");
+			if (yyjson_is_str(coa_name_val)) {
+				row.country_asylum_name = yyjson_get_str(coa_name_val);
 			}
 
-			yyjson_doc_free(json_data);
+			rows.push_back(row);
+		}
+
+		yyjson_doc_free(json_data);
+	}
+
+	static void FetchUNHCRData(const HttpSettings &settings, const string &population_type,
+	                           const string &country_iso3, std::vector<DataRow> &rows) {
+
+		string field_name = GetUNHCRFieldName(population_type);
+
+		// UNHCR Population Statistics API — unified /population/ endpoint
+		// cf_type=iso tells API to accept ISO3 country codes
+		// Try both as country of origin and country of asylum
+		for (const auto &param_name : {"coo", "coa"}) {
+			string url = "https://api.unhcr.org/population/v1/population/"
+			             "?limit=10000&cf_type=iso&" + string(param_name) + "=" + country_iso3;
+
+			FetchUNHCRPage(settings, url, field_name, rows);
 		}
 	}
 

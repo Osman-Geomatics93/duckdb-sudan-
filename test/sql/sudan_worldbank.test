@@ -22,14 +22,20 @@ SELECT count(*) > 0 FROM SUDAN_WorldBank('SP.POP.TOTL');
 ----
 true
 
-# Test SUDAN_WorldBank returns expected columns
-query IIIIII
-SELECT indicator_id, indicator_name, country, country_name, year, value
+# Test SUDAN_WorldBank returns expected columns and data for a known year
+query IIIII
+SELECT indicator_id, indicator_name, country, country_name, year
 FROM SUDAN_WorldBank('SP.POP.TOTL')
 WHERE year = 2020
 LIMIT 1;
 ----
-SP.POP.TOTL	Population, total	SD	Sudan	2020	(notempty)
+SP.POP.TOTL	Population, total	SD	Sudan	2020
+
+# Test that the value column is non-null for a known indicator
+query I
+SELECT value IS NOT NULL FROM SUDAN_WorldBank('SP.POP.TOTL') WHERE year = 2020 LIMIT 1;
+----
+true
 
 # Test multi-country query
 query I
