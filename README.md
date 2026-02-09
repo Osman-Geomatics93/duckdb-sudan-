@@ -40,6 +40,7 @@ Plus **12 SQL functions** including indicator search, geospatial boundaries, and
 
 ```sql
 -- In DuckDB v1.4.4+ (launch with -unsigned flag)
+INSTALL httpfs; LOAD httpfs;
 SET custom_extension_repository = 'https://osman-geomatics93.github.io/duckdb-sudan-';
 INSTALL sudan;
 LOAD sudan;

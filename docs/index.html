@@ -562,7 +562,10 @@
             <span class="en-text">Install — DuckDB v1.4.4+ (Windows)</span>
             <span class="ar-text" style="font-family:var(--font-arabic)">التثبيت — DuckDB v1.4.4+ (ويندوز)</span>
         </div>
-        <code><span class="cm">-- Set the custom extension repository</span>
+        <code><span class="cm">-- Enable HTTPS downloads</span>
+<span class="kw">INSTALL</span> httpfs; <span class="kw">LOAD</span> httpfs;
+
+<span class="cm">-- Set the custom extension repository</span>
 <span class="kw">SET</span> custom_extension_repository = <span class="str">'https://osman-geomatics93.github.io/duckdb-sudan-'</span>;
 
 <span class="cm">-- Install and load</span>
