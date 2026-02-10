@@ -27,6 +27,15 @@ vcpkg-manifest-install.log
 *.swp
 *~
 
+# Generated GIS files
+*.dbf
+*.shp
+*.shx
+*.gpkg
+*.geojson
+*.prj
+*.cpg
+
 # OS
 Thumbs.db
 Desktop.ini
