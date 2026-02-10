@@ -7,6 +7,7 @@
 [![Docs](https://img.shields.io/badge/Docs-Live-green.svg)](https://osman-geomatics93.github.io/duckdb-sudan-/)
 [![SQL Functions](https://img.shields.io/badge/SQL_Functions-12-orange.svg)](#all-sql-functions)
 [![APIs](https://img.shields.io/badge/APIs-5-purple.svg)](#data-providers)
+[![Video Tutorial](https://img.shields.io/badge/▶_Video_Tutorial-Watch_Now-red.svg)](#video-tutorial)
 
 **Unified SQL access to Sudan's humanitarian, development, and geospatial data from 5 international APIs**
 
@@ -21,6 +22,16 @@ Sudan is experiencing one of the world's largest humanitarian crises, yet its da
 > **Interactive Documentation** — Visit [**osman-geomatics93.github.io/duckdb-sudan-**](https://osman-geomatics93.github.io/duckdb-sudan-/) for live charts, interactive map, SQL playground, and bilingual (Arabic/English) reference.
 
 ![DuckDB Sudan Extension Demo](docs/demo.png)
+
+## Video Tutorial
+
+<div align="center">
+
+[![Watch Video Tutorial](https://img.shields.io/badge/▶_Watch_Full_Tutorial-Google_Drive-4285F4?style=for-the-badge&logo=googledrive&logoColor=white)](https://drive.google.com/file/d/1FXHZqmpEjrg0eWt6jAX1kzk_ORgj6ytz/view?usp=sharing)
+
+**Complete walkthrough covering installation, setup (local & Google Colab), and live usage examples.**
+
+</div>
 
 ## Data Providers
 
@@ -341,6 +352,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## Links
 
+- [**Video Tutorial**](https://drive.google.com/file/d/1FXHZqmpEjrg0eWt6jAX1kzk_ORgj6ytz/view?usp=sharing) — Full walkthrough: installation, setup, and usage (local & Colab)
 - [**Documentation Site**](https://osman-geomatics93.github.io/duckdb-sudan-/) — Interactive docs with charts, map, SQL playground
 - [**GitHub Repository**](https://github.com/Osman-Geomatics93/duckdb-sudan-)
 - [**Function Reference**](docs/functions.md) — Complete API documentation
