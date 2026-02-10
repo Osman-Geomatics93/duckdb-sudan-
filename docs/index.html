@@ -421,6 +421,81 @@
         .country-item .iso { color: var(--accent); font-weight: 700; font-family: var(--font-mono); min-width: 2.5rem; }
         .country-item .ar { color: var(--text-muted); margin-left: auto; font-family: var(--font-arabic); direction: rtl; }
 
+        /* ===== Notebook Cards ===== */
+        .notebooks-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+            gap: 1.5rem; margin: 2rem 0;
+        }
+        .notebook-card {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius);
+            overflow: hidden; transition: all var(--transition); display: flex; flex-direction: column;
+        }
+        .notebook-card:hover { border-color: var(--accent); transform: translateY(-3px); box-shadow: var(--shadow); }
+        .notebook-preview {
+            height: 180px; position: relative; overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .notebook-preview .nb-icon {
+            font-size: 3.5rem; opacity: 0.15; position: absolute;
+        }
+        .notebook-preview .nb-tags {
+            position: absolute; top: 0.8rem; left: 0.8rem; display: flex; gap: 0.4rem; flex-wrap: wrap;
+        }
+        .nb-tag {
+            font-size: 0.65rem; padding: 0.2rem 0.55rem; border-radius: 4px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.03em;
+        }
+        .nb-tag.sql { background: rgba(96, 165, 250, 0.15); color: var(--link); }
+        .nb-tag.geo { background: rgba(52, 211, 153, 0.15); color: var(--green); }
+        .nb-tag.plotly { background: rgba(167, 139, 250, 0.15); color: var(--purple); }
+        .nb-tag.folium { background: rgba(251, 191, 36, 0.15); color: var(--accent); }
+        .nb-tag.beginner { background: rgba(34, 211, 238, 0.15); color: var(--cyan); }
+        .nb-tag.advanced { background: rgba(248, 113, 113, 0.15); color: var(--red); }
+        .notebook-preview .nb-visual {
+            display: flex; gap: 0.5rem; align-items: center; z-index: 1;
+        }
+        .nb-cell {
+            background: var(--bg-code); border: 1px solid var(--border); border-radius: 6px;
+            padding: 0.5rem 0.8rem; font-family: var(--font-mono); font-size: 0.7rem;
+            color: var(--text-muted); max-width: 200px; white-space: nowrap; overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .notebook-body { padding: 1.2rem 1.5rem; flex: 1; display: flex; flex-direction: column; }
+        .notebook-body h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.3rem; }
+        .notebook-body .nb-arabic {
+            color: var(--accent); font-family: var(--font-arabic); font-size: 0.88rem;
+            direction: rtl; display: block; text-align: right; margin-bottom: 0.5rem;
+        }
+        .notebook-body p { color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem; flex: 1; }
+        .notebook-body .nb-meta {
+            display: flex; gap: 1.2rem; font-size: 0.75rem; color: var(--text-muted);
+            margin-bottom: 1rem; flex-wrap: wrap;
+        }
+        .notebook-body .nb-meta span { display: flex; align-items: center; gap: 0.3rem; }
+        .notebook-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+        .colab-btn {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            background: linear-gradient(135deg, #F9AB00, #E37400); color: #0b0f1a;
+            padding: 0.5rem 1.2rem; border-radius: 8px; text-decoration: none;
+            font-size: 0.82rem; font-weight: 700; font-family: var(--font-sans);
+            transition: all var(--transition); border: none; cursor: pointer;
+        }
+        .colab-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .colab-btn svg { width: 18px; height: 18px; }
+        .github-nb-btn {
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            background: none; border: 1px solid var(--border); color: var(--text-secondary);
+            padding: 0.5rem 1rem; border-radius: 8px; text-decoration: none;
+            font-size: 0.82rem; font-weight: 500; font-family: var(--font-sans);
+            transition: all var(--transition);
+        }
+        .github-nb-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+        @media (max-width: 768px) {
+            .notebooks-grid { grid-template-columns: 1fr; }
+            .notebook-preview { height: 140px; }
+        }
+
         /* ===== Changelog ===== */
         .timeline { position: relative; padding-left: 2rem; }
         .timeline::before {
@@ -497,6 +572,7 @@
         <a href="#map">Map</a>
         <a href="#playground">Playground</a>
         <a href="#functions">Functions</a>
+        <a href="#notebooks">Notebooks</a>
     </nav>
     <div class="header-right">
         <button class="header-btn" onclick="openSearch()" title="Ctrl+K">&#x1F50D; Search</button>
@@ -871,6 +947,109 @@ build\release\duckdb.exe -unsigned</code>
 cd duckdb-sudan-
 GEN=ninja make release
 ./build/release/duckdb -unsigned</code>
+    </div>
+</section>
+
+<!-- Notebooks -->
+<section class="section" id="notebooks">
+    <div class="section-header">
+        <div class="divider"></div>
+        <h2>
+            <span class="en-text">Interactive Notebooks</span>
+            <span class="ar-text" style="font-family:var(--font-arabic)">دفاتر تفاعلية</span>
+        </h2>
+        <p>
+            <span class="en-text">Learn SQL and explore Sudan's data interactively in Google Colab. No installation needed &mdash; click and start querying.</span>
+            <span class="ar-text" style="font-family:var(--font-arabic)">تعلّم SQL واستكشف بيانات السودان تفاعلياً في Google Colab. بدون تثبيت &mdash; انقر وابدأ الاستعلام.</span>
+        </p>
+    </div>
+
+    <div class="notebooks-grid">
+        <!-- SQL Basics Notebook -->
+        <div class="notebook-card">
+            <div class="notebook-preview" style="background: linear-gradient(135deg, rgba(96,165,250,0.08) 0%, rgba(34,211,238,0.08) 100%);">
+                <div class="nb-icon">&#128218;</div>
+                <div class="nb-tags">
+                    <span class="nb-tag sql">SQL</span>
+                    <span class="nb-tag beginner">Beginner</span>
+                </div>
+                <div class="nb-visual">
+                    <div class="nb-cell"><span style="color:var(--code-kw)">SELECT</span> * <span style="color:var(--code-kw)">FROM</span> <span style="color:var(--code-fn)">SUDAN_States</span>();</div>
+                    <div style="color:var(--text-muted);font-size:1.2rem">&#8594;</div>
+                    <div class="nb-cell" style="color:var(--green)">18 rows</div>
+                </div>
+            </div>
+            <div class="notebook-body">
+                <h3>
+                    <span class="en-text">SQL Basics with Sudan Data</span>
+                    <span class="ar-text" style="font-family:var(--font-arabic)">أساسيات SQL مع بيانات السودان</span>
+                </h3>
+                <span class="nb-arabic">تعلم SQL من الصفر باستخدام بيانات حقيقية</span>
+                <p>
+                    <span class="en-text">A hands-on SQL tutorial using real Sudan data. Covers SELECT, WHERE, JOIN, GROUP BY, HAVING, CASE, and geospatial queries &mdash; all powered by live API data from the extension.</span>
+                    <span class="ar-text" style="font-family:var(--font-arabic)">دليل عملي لتعلم SQL باستخدام بيانات السودان الحقيقية. يغطي SELECT، WHERE، JOIN، GROUP BY، HAVING، CASE، والاستعلامات الجغرافية.</span>
+                </p>
+                <div class="nb-meta">
+                    <span>&#128196; 70+ cells</span>
+                    <span>&#9201; ~20 min</span>
+                    <span>&#128205; jupysql magic</span>
+                    <span>&#127760; DuckDB spatial</span>
+                </div>
+                <div class="notebook-actions">
+                    <a href="https://colab.research.google.com/github/Osman-Geomatics93/duckdb-sudan-/blob/main/notebooks/sudan_sql_basics.ipynb" target="_blank" class="colab-btn">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.94 2a7.06 7.06 0 0 0-4.87 2.08l-.17.19-.16-.18A7.06 7.06 0 0 0 6.87 2C3.05 2 0 5.18 0 9.12c0 4.49 3.89 8.15 9.79 13.7l.69.64a2 2 0 0 0 2.73 0l.68-.63C19.78 17.58 24 13.68 24 9.12 24 5.18 20.76 2 16.94 2z"/></svg>
+                        Open in Colab
+                    </a>
+                    <a href="https://github.com/Osman-Geomatics93/duckdb-sudan-/blob/main/notebooks/sudan_sql_basics.ipynb" target="_blank" class="github-nb-btn">
+                        &#128193; View on GitHub
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Geospatial Analysis Notebook -->
+        <div class="notebook-card">
+            <div class="notebook-preview" style="background: linear-gradient(135deg, rgba(167,139,250,0.08) 0%, rgba(230,57,70,0.08) 100%);">
+                <div class="nb-icon">&#127758;</div>
+                <div class="nb-tags">
+                    <span class="nb-tag geo">Geospatial</span>
+                    <span class="nb-tag plotly">Plotly</span>
+                    <span class="nb-tag folium">Folium</span>
+                    <span class="nb-tag advanced">Advanced</span>
+                </div>
+                <div class="nb-visual">
+                    <div class="nb-cell"><span style="color:var(--code-fn)">px.choropleth_mapbox</span>(gdf, ...)</div>
+                    <div style="color:var(--text-muted);font-size:1.2rem">&#8594;</div>
+                    <div class="nb-cell" style="color:var(--purple)">&#128506; dark map</div>
+                </div>
+            </div>
+            <div class="notebook-body">
+                <h3>
+                    <span class="en-text">Geospatial Analysis Dashboard</span>
+                    <span class="ar-text" style="font-family:var(--font-arabic)">لوحة التحليل الجغرافي المكاني</span>
+                </h3>
+                <span class="nb-arabic">خرائط تفاعلية ولوحات بيانات حديثة</span>
+                <p>
+                    <span class="en-text">13 interactive visualizations: choropleth maps, animated population race, refugee Sankey flows, regional sunburst, health dashboard, agriculture treemap, dark-themed Folium map with popups, radar charts, GDP gauges, and an executive dashboard.</span>
+                    <span class="ar-text" style="font-family:var(--font-arabic)">13 رسماً تفاعلياً: خرائط حرارية، سباق سكاني متحرك، مخطط سانكي للاجئين، شمسي إقليمي، لوحة صحية، خريطة شجرية للزراعة، خريطة Folium داكنة، مخطط راداري، ولوحة تنفيذية.</span>
+                </p>
+                <div class="nb-meta">
+                    <span>&#128202; 13 sections</span>
+                    <span>&#128506; Plotly dark theme</span>
+                    <span>&#127759; Folium multi-layer</span>
+                    <span>&#128190; 5 export formats</span>
+                </div>
+                <div class="notebook-actions">
+                    <a href="https://colab.research.google.com/github/Osman-Geomatics93/duckdb-sudan-/blob/main/notebooks/sudan_geospatial_analysis.ipynb" target="_blank" class="colab-btn">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.94 2a7.06 7.06 0 0 0-4.87 2.08l-.17.19-.16-.18A7.06 7.06 0 0 0 6.87 2C3.05 2 0 5.18 0 9.12c0 4.49 3.89 8.15 9.79 13.7l.69.64a2 2 0 0 0 2.73 0l.68-.63C19.78 17.58 24 13.68 24 9.12 24 5.18 20.76 2 16.94 2z"/></svg>
+                        Open in Colab
+                    </a>
+                    <a href="https://github.com/Osman-Geomatics93/duckdb-sudan-/blob/main/notebooks/sudan_geospatial_analysis.ipynb" target="_blank" class="github-nb-btn">
+                        &#128193; View on GitHub
+                    </a>
+                </div>
+            </div>
+        </div>
     </div>
 </section>
 
